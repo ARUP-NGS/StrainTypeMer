@@ -1,0 +1,40 @@
+__author__ = 'ksimmon'
+
+import random
+
+def kmer_error_rate(error_rate=.2, average_sequence_length=100, kmer_size=60, number_of_interations=10000):
+    """compute the average number of kmers containing a error"""
+    ERROR_RATE = error_rate
+    AVERAGER_SEQUENCE_LENGTH = average_sequence_length
+    KMER_SIZE = kmer_size
+
+
+    sequences_with_errors = []
+    cutoff = error_rate * 100
+    #print cutoff
+    for i in range(number_of_interations):
+        _s = ""
+        for j in range(average_sequence_length):
+            error_rate = random.randint(1, 10000)
+            #print error_rate > cutoff
+            if cutoff > error_rate:
+                _s += "X"
+            else:
+                _s += "A"
+        sequences_with_errors.append(_s)
+        #print _s
+
+
+    total_number_kmers = 0.0
+    total_number_kmers_with_error = 0.0
+
+    for seq in sequences_with_errors:
+        for i in range(average_sequence_length - kmer_size + 1):
+            kmer = (seq[i : i + kmer_size])
+            if "X" in kmer:
+                total_number_kmers_with_error += 1
+            total_number_kmers += 1
+
+    return total_number_kmers_with_error/total_number_kmers * 100
+
+print "{:.1f}%".format(kmer_error_rate(average_sequence_length=140,error_rate=.1,kmer_size=31))
