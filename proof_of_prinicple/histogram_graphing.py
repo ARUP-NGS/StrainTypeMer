@@ -12,8 +12,6 @@ def parse_values(_file):
             line = line.strip().split(" ")
             _arr_count.append(float(line[0]))
             _arr_noKMERS.append(float(line[1]))
-
-
     return np.array(_arr_count), np.array(_arr_noKMERS)
 
 
@@ -27,6 +25,8 @@ Initially AC5 and AC4, which have been run 3 times each.
 from os import listdir
 from os.path import isfile, join
 base_dir = "/home/ksimmon/data/strain_typing/Acineto_combined/jellyfish_31/histo/"
+base_dir = "/home/ksimmon/data/strain_typing/BactieraRun4_22_2014/staph/jellyfish_31/histo/"
+base_dir = "/home/ksimmon/data/strain_typing/BactieraRun4_22_2014/enterococcus/jellyfish_31/histo/"
 
 files = listdir(base_dir)
 
@@ -37,25 +37,27 @@ files = listdir(base_dir)
 
 line = []
 for f in files:
-    if "6055" not in f:
-        #if "A4" in f or "AC4" in f:
-        print f
-        x,y = parse_values(base_dir + f)
-        #plt.bar(x,y, linewidth=1.0)
 
-        n, bins, patches = plt.hist(x[1:], 50, normed=1, color="green", alpha=0.8)
-        print np.mean(x), np.min(x),np.max(x)
-        print np.mean(y)
+    #if "A4" in f or "AC4" in f:
+    sample = f[:f.find("_31bp")]
+    print sample
+    x,y = parse_values(base_dir + f)
+    #plt.bar(x,y, linewidth=1.0)
+
+    n, bins, patches = plt.hist(x[1:], 50, normed=1, color="green", alpha=0.8)
+    print np.mean(x), np.min(x),np.max(x)
+    print np.mean(y)
 
 #plt.bar(x,y )
 
-        #plt.yscale("log")
-        plt.ylabel("no of kmers")
-        plt.xlabel("count")
-        #plt.xlim(0,5000)
-        #plt.ylim(0,5000)
-        plt.show()
+    #plt.yscale("log")
+    plt.ylabel("frequency of kmers with x count")
+    plt.xlabel("distinct kmer is count")
+    #plt.xlim(0,5000)
+    #plt.ylim(0,5000)
+    #plt.show()
+
+    plt.savefig('/home/ksimmon/Documents/{0}_enterococcus_kmer_histo.pdf'.format(sample))
+    plt.close()
 
 
-print 100 - 21 + 1
-print 200 - 30 + 1

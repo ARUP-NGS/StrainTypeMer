@@ -13,10 +13,17 @@ import scipy.spatial.distance as distance
 import scipy.cluster.hierarchy as sch
 
 base= "/home/ksimmon/data/strain_typing/Acineto_combined/jellyfish_31/dump/recount/MERGED/"
-merged_file="acineto_merged_31bp.fa"
+base= "/home/ksimmon/data/strain_typing/Acineto_combined/jellyfish_31/dump/recount_sans_A4/merged/"
+base= "/home/ksimmon/data/strain_typing/BactieraRun4_22_2014/staph/jellyfish_31/dump/count/merged/"
+base= "/home/ksimmon/data/strain_typing/BactieraRun4_22_2014/enterococcus/jellyfish_31/dump/count/merged/"
+base="/home/ksimmon/data/strain_typing/BactieraRun4_22_2014/staph/jellyfish_31_clean/dump_2/recount/merged_db/"
+base="/home/ksimmon/data/strain_typing/BactieraRun4_22_2014/enterococcus/jellyfish_31_clean/dump_2/recount/merged/"
 
+merged_file="Staph_merged_q35_31bp.fa"
+merged_file="entro_merged_q25_remove_low_counts.txt"
+merged_file="entro_merged_q25_low_counts.txt"
 order = []
-NUMBER_OF_STRAINS = 21
+
 
 strain_values = {}
 total_kmers = {}
@@ -27,7 +34,7 @@ _key = { 1: "A1",
           2 : "A2",
          4: "A3",
          8: "A4_2",
-         16: "A4",
+        16: "A4",
          32: "A5_2",
          64: "A5",
          128 :"A6",
@@ -45,6 +52,44 @@ _key = { 1: "A1",
          524288 : "AC9_2",
          1048576 : "AC9" }
 
+_key = { 1: "A1",
+          2 : "A2",
+         4: "A3",
+         8: "A4_2",
+         16: "A5_2",
+         32: "A5",
+         64 :"A6",
+         128 : "A7",
+         256: "A8",
+         512 : "A9",
+          1024   : "AC1",
+          2048: "AC2",
+         4096 : "AC3",
+         8192 : "AC4",
+          16384 : "AC5",
+         32768 : "AC6",
+        65536 : "AC7",
+         131072 : "AC8",
+         262144 : "AC9_2",
+         524288 : "AC9" }
+
+_key = { 1: "S1",
+          2 : "S2",
+         4: "S3",
+         8: "S4",
+         16: "S5",
+         32: "S6",
+         64 :"S7",
+         128 : "SC",}
+
+_key = { 1: "E1",
+          2 : "E2",
+         4: "E3",
+         8: "E4",
+         16: "EC",}
+
+NUMBER_OF_STRAINS = len(_key)
+
 
 for i in range(NUMBER_OF_STRAINS):
     offset = int(math.pow(2,i))
@@ -53,27 +98,31 @@ for i in range(NUMBER_OF_STRAINS):
     order.append(offset)
     COMPLETELY_SHARED+=offset
     for j in range(i+1,NUMBER_OF_STRAINS):
+
         offset_inner = int(math.pow(2,j))
         strain_values[offset].update({offset_inner:0})
 
-wf = open('/home/ksimmon/Documents/atrib_1000_remove_shared.txt', "w")
 
-count = 0
-for line in open(base + merged_file):
-    #kmer = line.strip().split("\t")[0]
-    flag = int(line.strip().split("\t")[1])
-    if flag != COMPLETELY_SHARED:
-        _s = ""
-        for i in range(len(order)):
-            if order[i] & flag:
-                _s += "1,"
-            else:
-                _s += "0,"
-        wf.write(_s[:-1] + "\n")
 
-        count += 1
-        if count == 10000:
-            break
+
+#wf = open('/home/ksimmon/Documents/atrib_1000_remove_shared.txt', "w")
+
+# count = 0
+# for line in open(base + merged_file):
+#     #kmer = line.strip().split("\t")[0]
+#     flag = int(line.strip().split("\t")[1])
+#     if flag != COMPLETELY_SHARED:
+#         _s = ""
+#         for i in range(len(order)):
+#             if order[i] & flag:
+#                 _s += "1,"
+#             else:
+#                 _s += "0,"
+#         wf.write(_s[:-1] + "\n")
+#
+#         count += 1
+#         if count == 10000:
+#             break
 
 
 
@@ -81,33 +130,37 @@ print COMPLETELY_SHARED
 count = 0
 for line in open(base + merged_file):
     #kmer = line.strip().split("\t")[0]
+    #print line
     flag = int(line.strip().split("\t")[1])
-    if flag != COMPLETELY_SHARED:
+    #if flag != COMPLETELY_SHARED:
 
-        for i in range(len(order)):
-            if order[i] & flag:
+    for i in range(len(order)):
+        if order[i] & flag:
 
-                total_kmers[order[i]] += 1
-                for j in range(i+1,len(order)):
-                    if order[j] & flag:
-                        strain_values[order[i]][order[j]] += 1
-        count += 1
-        if count == 10000:
-            break
+            total_kmers[order[i]] += 1
+            for j in range(i+1,len(order)):
+                if order[j] & flag:
+                    strain_values[order[i]][order[j]] += 1
+    # count += 1
+    # print count
+    # if count == 10000:
+    #     break
 ################print out formatted results###########################
 
 distance_matrix = []
 
 print "".center(5) + ",",
 for i in order[:]:
-    print _key[i].center(5) + ",",
+        print _key[i].center(5) + ",",
 print
 
 distance_matrix = []
 for i in order:
     _arr = []
+    #if i != 16:
     print _key[i].center(5) + "," ,
     for j in order[:]:
+        #if i != 16:
         #print i, j, strain_values[i][j], total_kmers[i], total_kmers[j]
         if j in strain_values[i]:
             _arr.append(  float(strain_values[i][j] + strain_values[i][j]) / float(total_kmers[i] + total_kmers[j]))
@@ -130,6 +183,7 @@ distance_matrix = np.array(distance_matrix)
 
 _lab = []
 for i in order:
+    #if i != 16:
     _lab.append(_key[i])
 
 print _lab
@@ -163,8 +217,8 @@ heatmapGS = gridspec.GridSpec(2,2,wspace=0.0,hspace=0.0,width_ratios=[0.25,1], h
 col_denAX = fig.add_subplot(heatmapGS[0,1])
 col_denD = sch.dendrogram(clusters_cols, color_threshold=np.inf)
 col_ax = col_denAX.get_axes()
-col_ax.set_xticks([])
-col_ax.set_yticks([])
+#col_ax.set_xticks([])
+#col_ax.set_yticks([])
 
 ##ROW DENDRO
 row_denAX = fig.add_subplot(heatmapGS[1,0])
@@ -227,6 +281,6 @@ plt.tick_params(labelsize=8)
 cb.outline.set_linewidth(0)
 
 fig.tight_layout()
-fig.savefig('/home/ksimmon/Desktop/dendro_10000_remove_shared.pdf')
+#fig.savefig('/home/ksimmon/Documents/entero_dendro_qc_remove_low_counts_across_strains.pdf')
 plt.show()
 

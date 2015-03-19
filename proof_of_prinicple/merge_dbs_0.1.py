@@ -28,6 +28,20 @@ files=["A1_S1_31bp_2_count.jf",
 "AC9_S5_31bp_3_count.jf"
 ]
 #kl db mod
+
+files = [
+    "S1_S12_clean",
+    "S2_S13_clean",
+    "S3_S14_clean",
+    "S4_S15_clean",
+    "S5_S16_clean",
+    "S6_S17_clean",
+    "S7_S18_clean",
+    "SC_S19_clean",
+]
+
+qc = "_"
+
 kl = 31
 
 _t = 0
@@ -36,10 +50,12 @@ for i in range(len(files)):
     print offset
     _t += offset
     print files[i]
-    file_mv = files[i][:-3] + "_{0}.jf".format(offset)
+    _file = files[i] + qc + str(kl) + "bp.jf"
+
+    file_mv = _file[:-3] + "_{0}.jf".format(offset)
     #subprocess.call("python /home/ksimmon/bin/Taxonomer/utilities/mod_jf2.0_count.py " \
-            # + str(kl) + " " + files[i] + " " + str(offset), shell=True)
+            #+ str(kl) + " " + files[i] + " " + str(offset), shell=True)
 
-    #su.move(file[i], file_mv)
-
+    #su.move(_file, file_mv)
+    print _file, file_mv
 print _t
