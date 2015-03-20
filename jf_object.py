@@ -7,7 +7,7 @@ import numpy as np
 
 class jf_object:
     """contains information about the jellyfish db for a single strain"""
-
+    kmer_cutoff = 0
     def __init__(self, name, path):
         self.name = name
         self.path = path
@@ -16,7 +16,7 @@ class jf_object:
         self.get_stats()
         self.get_histo()
         self.get_estimate_coverage()
-        self.estimate_genome_size()
+
         self.shared_count = None
         #self.percentage_of_kmers()
 
@@ -58,30 +58,28 @@ class jf_object:
         pass
         #TODO
 
-    def estimate_genome_size(self):  ####GET THE FREQUENCY OF KMERS REPEATED IN ACINETO GENOME
-        print self.name, self.coverage
-        print  self.distinct_kmers
-        print  self.distinct_kmers - sum(self.histo[:5])
-        print  self.distinct_kmers - sum(self.histo[:10])
-        print  self.distinct_kmers - sum(self.histo[:15])
+    def estimate_genome_size(self, coverage_cutoff):  ####GET THE FREQUENCY OF KMERS REPEATED IN ACINETO GENOME
+        return  self.distinct_kmers - sum(self.histo[:coverage_cutoff])
 
-        print
 
-    def kmer_count(self, file_path):
-        _arr = []
-        attach = _arr.append
-        count = 0
-        with open(file_path) as f:
-            for l in f:
-                count +=1
-                kmer = l.strip().split("\t")[0]
-                mer = jellyfish.MerDNA(kmer)
-                mer.canonicalize()
-                attach(self.qf[mer])
-                if count > 1000:
-                    break
-        self.shared_count = _arr
-        return _arr
+    def set_cutoff(self, cutoff):
+        self.kmer_cutoff =  cutoff
+
+
+    # def kmer_count(self, str_name, file_path):
+    #     _arr = []
+    #     attach = _arr.append
+    #     count = 0
+    #     with open(file_path) as f:
+    #         for l in f:
+    #             count +=1
+    #             kmer = l.strip().split("\t")[0]
+    #             mer = jellyfish.MerDNA(kmer)
+    #             mer.canonicalize()
+    #             attach(self.qf[mer])
+    #             if count > 1000:
+    #                 break
+    #     return str_name, _arr
 
     def get_shared_count(self):
         return self.shared_count
