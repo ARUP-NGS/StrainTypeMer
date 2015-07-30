@@ -95,3 +95,6 @@ class jf_object:
 
             if count > self.coverage:
                 return
+
+    def generate_coverage_histogram(self):
+        pass
