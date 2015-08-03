@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 ###############################################################################################
-#
 # This bash script ties together reference assembly for MLST information
 # @input fastq1
 #         fastq2
@@ -10,14 +9,7 @@
 # 3) bwa      - mapped to reference (whole genome)
 # 4) sort, index, pileup
 # 5)
-#
-#
-#
-#
 #############################################################################################
-
-
-
 
 ################   PATHS  ############################################################
 #fastq_dir="/home/ksimmon/data/strain_typing/Acineto_combined/raw_fastqs/"
@@ -70,9 +62,9 @@ cutadapt="/home/ksimmon/anaconda/bin/cutadapt"
 prinseq="perl /home/ksimmon/bin/prinseq-lite-0.20.4/prinseq-lite.pl"
 bwa="/home/ksimmon/bin/bwa-0.7.12/bwa"
 samtools="/home/ksimmon/bin/samtools-1.2/samtools"
-pileup_to_consensus="python /home/ksimmon/PycharmProjects/strain_typing/utility_scripts/pileup_to_consensus.py"
+pileup_to_consensus="python /home/ksimmon/PycharmProjects/strain_typing/Strain_typing/utility_scripts/pileup_to_consensus.py"
 bowtie2="/home/ksimmon/tools/bowtie2"
-
+query_pubmlst="python /home/ksimmon/PycharmProjects/strain_typing/Strain_typing/utility_scripts/Query_pubmlst.py"
 
 
 ### VARIBLES ###########################################################
@@ -129,8 +121,6 @@ $bwa mem -t 8 ${reference_file} ${file_1_processed} ${file_2_processed} > ${sam_
 ######## BOWTIE #############
 #$bowtie2 --local -p 8 -x ${reference_file} -1 ${file_clean_1} -2 ${file_clean_2} -U ${file_clean_1_s},${file_clean_2_s} -S ${sam_file}
 #########bowtie2##################
-
-
 #bioawk -c sam '!and($flag,4)' ${sam_file} > ${mapped_sam_file} #extract the mapped reads
 bam_file="${sam_file%.sam}.bam"
 $samtools view -b ${sam_file} > ${bam_file}
@@ -149,10 +139,7 @@ $samtools mpileup -f ${reference_file} ${sorted_bam_file} > ${pile_up_file}
 $pileup_to_consensus -r ${reference_file} -i ${pile_up_file} > ${preprocessed_dir}${sample_id}_consensus.fa
 
 ###get MLST STs and Alleles
-python ~/PycharmProjects/strain_typing/utility_scripts/Query_pubmlst.py  -i ${preprocessed_dir}${sample_id}_consensus.fa -d "${3}" > ${preprocessed_dir}${sample_id}_mlst.txt
-
-
-
+$query_pubmlst  -i ${preprocessed_dir}${sample_id}_consensus.fa -d "${3}" > ${preprocessed_dir}${sample_id}_mlst.txt
 
 echo "Done with ${sample_id}"
 exit 0

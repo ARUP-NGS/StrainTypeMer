@@ -45,7 +45,7 @@ ADAPTER="AGATCGGAAGAGC"
 ##SETUP##
 #source /home/ksimmon/.bashrc
 
-preprocessed_dir="${PWD}/${base_file_name}_preprocessed/"
+preprocessed_dir="${PWD}/${base_file_name}_processed_jellyfish_31/"
 ##cutadapt
 mkdir ${preprocessed_dir}
 log_file="${preprocessed_dir}${base_file_name}.log"
@@ -69,7 +69,7 @@ file_clean_2_s="${preprocessed_dir}${base_file_name}_preprocessed_2_singletons.f
 file_concat="${preprocessed_dir}${base_file_name}_preprocessed_1_2.fasta"
 file_concat_all="${preprocessed_dir}${base_file_name}_preprocessed_all.fasta"
 #
-prinseq_params="-out_format 1 -line_width 0 -min_len 30 -ns_max_p 2 -lc_method dust -lc_threshold 10 -trim_tail_left 3 -trim_tail_right 3 -trim_qual_left 20 -trim_qual_right 20"
+prinseq_params="-out_format 1 -line_width 0 -derep 1 -min_len 30 -ns_max_p 2 -lc_method dust -lc_threshold 10 -trim_tail_left 3 -trim_tail_right 3 -trim_qual_left 20 -trim_qual_right 20"
 $prinseq -fastq ${file_1_trimmed} -fastq2 ${file_2_trimmed} -out_good ${file_clean_base} -out_bad ${file_failed_base} ${prinseq_params} >> ${log_file} 2>&1
 #
 ###add singletons to files

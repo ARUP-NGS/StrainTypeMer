@@ -31,8 +31,8 @@ def parse_pileup(coverage=0,bases="", quals="", line=""):
             _bases.append(v)
         else:
             _bases.append(v)
-    print _bases
-    print quals
+    #print _bases
+    #print quals
     return _bases, quals
 
 ########################################################################################################################

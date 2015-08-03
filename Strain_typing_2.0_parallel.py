@@ -20,14 +20,30 @@ import sys
 import subprocess
 import collections
 import jf_object as jfobj
-import multiprocessing
-from threading import Thread
+from multiprocessing import Process, Queue
+
+def count_kmers(q, merged_jf_obj, this_jf_object, cutoff):
+    """
+    This function facilitates the queuing of the jellyfish counting
+
+    Takes a jellyfish object merged from all the strains and calls the gets kmer count for the queried strain
+
+    :param q: queue
+    :param merged_jf_obj: merged count of all strains
+    :param this_jf_object: strain jf object
+    :return: None (puts in queue)    """
+    q.put(this_jf_object.get_kmer_count(merged_jf_obj, cutoff))
 
 def main():
+    """
+    The main method which takes a list jf counts (strains) compares them.
+    :return: status
+    """
     parser = argparse.ArgumentParser(description="the script take multiple jellyfish counts and compares the strains")
     parser.add_argument("-c", "--cutoff", help="The number of kmers to anaylaze [Default = None]", type=int, default=None)
     parser.add_argument('jf_files', nargs='+', help='jellyfish files for each strain')
     args = parser.parse_args()
+    cutoff = args.cutoff
     jf_files = args.jf_files
     ########################################################################################################################
 
@@ -56,7 +72,7 @@ def main():
     #create merged file
     try:
         subprocess.check_call([jellyfish_path,
-                               "merge", "-o", "/tmp/tmp.jf"] + file_paths )
+                               "merge", "-o", "-L 2", "/tmp/tmp.jf"] + file_paths )
                                #TODO create unique name in tmp and make sure you clean up after yourself
     except:
         sys.stderr.write("Error in running jellyfish merge\n")
@@ -65,7 +81,7 @@ def main():
     ########################################################################################################################
     #START THE WORK
     ########################################################################################################################
-    count_table = []
+    count_table = [[] for i in range(len(strain_objs)) ]
     kmer_table = []
     counter = 0
 
@@ -74,38 +90,40 @@ def main():
 
     merged_jf = jellyfish.ReadMerFile("/tmp/tmp.jf")
 
+    q = Queue()
 
-    #TODO#THREADED VERSION###
-    for mer, count in merged_jf:
-        #kmer_table.append(str(mer))
-        attach(
-            [ int(v.qf[mer]) for v in strain_objs.itervalues() ]
-        )
 
-        counter += 1
-        if args.cutoff is not None and counter >= args.cutoff:
-            break
-    #TODO#THREADED VERSION###
-
+    jobs = []
+    for _obj in strain_objs.itervalues():
+        p = Process(target=count_kmers, args=( q, merged_jf, _obj, cutoff, ))
+        jobs.append(p)
+    for j in jobs:
+        j.start()
+    for j in jobs:
+        _name, _arr = q.get()
+        count_table[strain_objs.keys().index(_name)]=np.array(_arr)
+        _arr = ""
+    q.close()
+    merged_jf = "" #kill any memory this is holding
 
     lowest_coverage = 10000 #set too high to be realistic
     sys.stdout.write(" COVERAGE INFORMATION ".center(80, "-") + "\n")
     sys.stdout.write("calculations only include kmers counted > 3 times\n")
 
 
-    #determine kmer cutoff for each strain ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #determine kmer cutoff for each strain ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #TODO Throw warning if below X
     cutoff_table = [] #this will hold the cutoff
     for k, v in strain_objs.iteritems():
         sys.stdout.write("Strain: {:s}\t Coverage Estimate: {:.1f}\n".format(k, v.coverage))
         cutoff_table.append(int(v.coverage * .25) + 1)
         v.set_cutoff(int(v.coverage * .25) + 1)
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 
 
-    count_table = np.array(count_table)
+
     sys.stdout.write(" STRAIN STATS ".center(80, "-") + "\n")
     for k, v in strain_objs.iteritems():
         sys.stdout.write("Strain: {:s}\n".format(k))
@@ -121,8 +139,9 @@ def main():
     count_table_filtered = []
     total_kmers = 0.0
     kept_kmers = 0.0
-    for kmer_count in count_table:
-        #print kmer_count
+
+    for kmer_count in np.array(count_table).T:
+        print kmer_count
         total_kmers += 1
         if (np.array(kmer_count) - cutoff).max() >= 0:
             count_table_filtered.append(kmer_count.clip(0,1))
