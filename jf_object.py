@@ -33,6 +33,8 @@ class jf_object:
             sys.stderr.write("Failed to retrieve db stats\n JELLYFISH ERROR: {0}\n".format(err))
             sys.exit(1)
 
+
+
         out = out.split("\n")
         self.unique_kmers = int(out[0].split(" ")[-1])
         self.distinct_kmers = int(out[1].split(" ")[-1])
@@ -70,22 +72,6 @@ class jf_object:
         self.kmer_cutoff =  cutoff
 
 
-
-    # def kmer_count(self, str_name, file_path):
-    #     _arr = []
-    #     attach = _arr.append
-    #     count = 0
-    #     with open(file_path) as f:
-    #         for l in f:
-    #             count +=1
-    #             kmer = l.strip().split("\t")[0]
-    #             mer = jellyfish.MerDNA(kmer)
-    #             mer.canonicalize()
-    #             attach(self.qf[mer])
-    #             if count > 1000:
-    #                 break
-    #     return str_name, _arr
-
     def get_shared_count(self):
         return self.shared_count
 
@@ -117,7 +103,11 @@ class jf_object:
     def get_kmer_count(self, jellyfish_obj, break_point):
         counter = 0
         _arr = []
-        for mer, count in jellyfish_obj:
+        for i in open(jellyfish_obj, "r"):
+            mer, count = i.strip().split("\t")
+            mer = jellyfish.MerDNA(mer)
+            mer.canonicalize()
+            #print mer, count, self.qf[mer]
             _arr.append(self.qf[mer])
             counter += 1
             if break_point is not None and counter >= break_point:

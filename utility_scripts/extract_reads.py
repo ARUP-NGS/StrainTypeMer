@@ -35,7 +35,6 @@ reads_to_extract = set([])
 for line in kraken_input:
     line = line.strip().split("\t")
     is_classified, read_name, taxid = line[0] == "C", line[1], int(line[2])
-
     if is_classified:
         while taxid != 1:
             if taxid == parent_taxid:

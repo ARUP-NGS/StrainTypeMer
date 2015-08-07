@@ -8,9 +8,6 @@ This script will take as input jf databases from strains and perform a compariso
 The input of strains should be provided should be provided as a comma separated list.
 assume sample name is before underscore
 """
-jellyfish_path = "/home/ksimmon/bin/Jellyfish/bin/jellyfish"
-threads = 8
-
 
 import jellyfish
 import numpy as np
@@ -21,6 +18,11 @@ import subprocess
 import collections
 import jf_object as jfobj
 from multiprocessing import Process, Queue
+import string
+import random
+
+jellyfish_path = "/home/ksimmon/bin/Jellyfish/bin/jellyfish"
+threads = 8
 
 def count_kmers(q, merged_jf_obj, this_jf_object, cutoff):
     """
@@ -70,13 +72,21 @@ def main():
     #TODO create unique name that to avoid overwriting when running multiple instances
     #TODO clean these files up
     #create merged file
+    temp_file =  "/tmp/tmp_{0}".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
     try:
         subprocess.check_call([jellyfish_path,
-                               "merge", "-o", "-L 2", "/tmp/tmp.jf"] + file_paths )
+                               "merge", '-L', "2", "-o", temp_file + ".jf"] + file_paths )
                                #TODO create unique name in tmp and make sure you clean up after yourself
     except:
         sys.stderr.write("Error in running jellyfish merge\n")
         sys.exit(3)
+    try:
+        subprocess.check_call([jellyfish_path,
+                               "dump", '-c',  "-t", "-o", temp_file + ".fa", temp_file + ".jf"] )
+                               #TODO create unique name in tmp and make sure you clean up after yourself
+    except:
+        sys.stderr.write("Error in running jellyfish merge\n")
+        sys.exit(4)
 
     ########################################################################################################################
     #START THE WORK
@@ -86,12 +96,9 @@ def main():
     counter = 0
 
     attach = count_table.append
-
-
-    merged_jf = jellyfish.ReadMerFile("/tmp/tmp.jf")
-
+    os.remove(temp_file + ".jf")
+    merged_jf = temp_file + ".fa"
     q = Queue()
-
 
     jobs = []
     for _obj in strain_objs.itervalues():
@@ -104,9 +111,10 @@ def main():
         count_table[strain_objs.keys().index(_name)]=np.array(_arr)
         _arr = ""
     q.close()
-    merged_jf = "" #kill any memory this is holding
+    os.remove(temp_file + ".fa")
 
-    lowest_coverage = 10000 #set too high to be realistic
+
+    #lowest_coverage = 10000 #set too high to be realistic
     sys.stdout.write(" COVERAGE INFORMATION ".center(80, "-") + "\n")
     sys.stdout.write("calculations only include kmers counted > 3 times\n")
 
@@ -119,10 +127,6 @@ def main():
         cutoff_table.append(int(v.coverage * .25) + 1)
         v.set_cutoff(int(v.coverage * .25) + 1)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-
 
     sys.stdout.write(" STRAIN STATS ".center(80, "-") + "\n")
     for k, v in strain_objs.iteritems():
@@ -141,9 +145,9 @@ def main():
     kept_kmers = 0.0
 
     for kmer_count in np.array(count_table).T:
-        print kmer_count
+        #print kmer_count
         total_kmers += 1
-        if (np.array(kmer_count) - cutoff).max() >= 0:
+        if (kmer_count - cutoff).max() >= 0:
             count_table_filtered.append(kmer_count.clip(0,1))
             kept_kmers += 1
 
@@ -161,20 +165,20 @@ def main():
     similarity_dict = collections.OrderedDict()
     for i in range(len(count_table_filtered)):
         similarity_dict.update({strain_keys[i] : collections.OrderedDict()})
+        sum_1 = sum(count_table_filtered[i])  #sum of kmers strain 1
         for j in range(i+1, len(count_table_filtered)):
-             sum_1 = sum(count_table_filtered[i])
-             sum_2 = sum(count_table_filtered[j])
-             intersection = float(sum( (count_table_filtered[i] + count_table_filtered[j]) == 2) )
-             total_kmers = sum( (count_table_filtered[i] == count_table_filtered[j]).clip(0,1) )
+             sum_2 = sum(count_table_filtered[j]) #sum of kmers strain 2
+             intersection = sum( count_table_filtered[i] + count_table_filtered[j] == 2)
+             total_kmers = sum(count_table_filtered[i] + count_table_filtered[j] > 0)
              smallest = sum_1
              if sum_2 < smallest:
                  smallest = sum_2
-
+             print sum_1, sum_2, total_kmers, intersection, smallest
              #print intersection, total_kmers
              similarity_dict[strain_keys[i]].update({
                                                      strain_keys[j] :
-                                                         (intersection / total_kmers * 100,
-                                                          intersection / smallest * 100,)
+                                                         (float(intersection) / total_kmers * 100,
+                                                          float(intersection) / smallest * 100,)
                                                     })
 
     #DETERMINE RELATIONSHIPS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

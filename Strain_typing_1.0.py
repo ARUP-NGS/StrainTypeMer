@@ -126,6 +126,7 @@ with open("/tmp/dump.fa") as f:
         #if kmer[27:-27] == "CCCGGG": #TODO REMOVE
         mer = jellyfish.MerDNA(kmer)
         mer.canonicalize()
+
         for v in strain_objs.itervalues():
             attach(int(v.qf[mer])) #query the kmer against each strain THIS can be threaded
 
