@@ -42,8 +42,9 @@ class jf_object:
         self.max_count = int(out[3].split(" ")[-1])
 
     def get_histo(self):
-        op = subprocess.Popen(["/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish", "histo", "--threads", "4", "--full", "--high", str(self.max_count - 1),
-                              "--low", "2", self.path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #print self.max_count
+        op = subprocess.Popen(["/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish", "histo", "--threads", "4", "--full", "--high", str(self.max_count ),
+                              "--low", "0", self.path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = op.communicate()
 
         if err != "":
@@ -57,8 +58,10 @@ class jf_object:
 
     def get_estimate_coverage(self):
         """Estimates the coverage for kmers count > 3 times"""
-        self.coverage = float(np.sum(self.histo_total[3:])) / float(np.sum(self.histo[3:]))
-
+        try:
+            self.coverage = float(np.sum(self.histo_total[3:])) / float(np.sum(self.histo[3:]))
+        except:
+            self.coverage = 0
 
     def get_histo_plot(self):
         pass
@@ -104,6 +107,7 @@ class jf_object:
         counter = 0
         _arr = []
         for i in open(jellyfish_obj, "r"):
+            #print i
             mer, count = i.strip().split("\t")
             mer = jellyfish.MerDNA(mer)
             mer.canonicalize()

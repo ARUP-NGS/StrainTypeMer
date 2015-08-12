@@ -8,18 +8,21 @@ This script will take as input jf databases from strains and perform a compariso
 The input of strains should be provided should be provided as a comma separated list.
 assume sample name is before underscore
 """
+import jf_object as jfobj
 
 import jellyfish
 import numpy as np
+from numpy import sum
+
 import argparse
 import os.path
 import sys
 import subprocess
 import collections
-import jf_object as jfobj
 from multiprocessing import Process, Queue
 import string
 import random
+
 
 jellyfish_path = "/home/ksimmon/bin/Jellyfish/bin/jellyfish"
 threads = 8
@@ -42,12 +45,24 @@ def main():
     :return: status
     """
     parser = argparse.ArgumentParser(description="the script take multiple jellyfish counts and compares the strains")
-    parser.add_argument("-c", "--cutoff", help="The number of kmers to anaylaze [Default = None]", type=int, default=None)
+    parser.add_argument("-c", "--cutoff", help="The number of kmers to analyze [Default = None]", type=int, default=None)
+    parser.add_argument( "--no_kmer_filtering", help="Do not filter kmers based on coverage",
+                         action="store_true", default=False)
+    parser.add_argument("-k", "--kmer_reference",
+                            help="instead of merging strains use kmer reference set for comparison",
+                            type=str, default=None)
     parser.add_argument('jf_files', nargs='+', help='jellyfish files for each strain')
     args = parser.parse_args()
+    no_kmer_filtering = args.no_kmer_filtering
     cutoff = args.cutoff
     jf_files = args.jf_files
+    kmer_reference = args.kmer_reference
     ########################################################################################################################
+    if kmer_reference is not None and os.path.isfile(kmer_reference) is False:
+        sys.stderr.write("kmer reference file does not exist: {0}\n".format(kmer_reference))
+        sys.exit(11)
+
+
 
     NUM_OF_STRAINS = len(jf_files) #calculate the number of samples
     file_paths = []
@@ -69,49 +84,59 @@ def main():
         sys.exit(2)
 
     #######################################################################################################################
-    #TODO create unique name that to avoid overwriting when running multiple instances
-    #TODO clean these files up
-    #create merged file
     temp_file =  "/tmp/tmp_{0}".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
-    try:
-        subprocess.check_call([jellyfish_path,
-                               "merge", '-L', "2", "-o", temp_file + ".jf"] + file_paths )
-                               #TODO create unique name in tmp and make sure you clean up after yourself
-    except:
-        sys.stderr.write("Error in running jellyfish merge\n")
-        sys.exit(3)
-    try:
-        subprocess.check_call([jellyfish_path,
-                               "dump", '-c',  "-t", "-o", temp_file + ".fa", temp_file + ".jf"] )
-                               #TODO create unique name in tmp and make sure you clean up after yourself
-    except:
-        sys.stderr.write("Error in running jellyfish merge\n")
-        sys.exit(4)
+    jf_temp_file = temp_file + ".jf"
+    dump_temp_file = temp_file + ".txt"
+    if kmer_reference is None:
+    #create merged file
+        #merge strain files together
 
+
+        try:
+            subprocess.check_call([jellyfish_path,
+                                   "merge", '-L', "2", "-o", jf_temp_file] + file_paths )
+        except:
+            sys.stderr.write("Error in running jellyfish merge\n")
+            sys.exit(3)
+        #dump kmers out to a file [Technically I should be able to avoid this however a jellyfish bug causes the loss of
+        # canonicalization for merged sets ] dumping out to txt file avoids this.
+        try:
+            subprocess.check_call([jellyfish_path,
+                                   "dump", '-c',  "-t", "-o", dump_temp_file, jf_temp_file] )
+        except:
+            sys.stderr.write("Error in running jellyfish merge\n")
+            sys.exit(4)
+
+        os.remove(jf_temp_file)
+        merged_jf = dump_temp_file
+    else: #supply my own kmer set.
+        merged_jf = kmer_reference
     ########################################################################################################################
     #START THE WORK
     ########################################################################################################################
     count_table = [[] for i in range(len(strain_objs)) ]
     kmer_table = []
     counter = 0
-
     attach = count_table.append
-    os.remove(temp_file + ".jf")
-    merged_jf = temp_file + ".fa"
-    q = Queue()
 
+    q = Queue(maxsize=8)
     jobs = []
     for _obj in strain_objs.itervalues():
         p = Process(target=count_kmers, args=( q, merged_jf, _obj, cutoff, ))
+        #print q.qsize()
         jobs.append(p)
     for j in jobs:
         j.start()
     for j in jobs:
         _name, _arr = q.get()
         count_table[strain_objs.keys().index(_name)]=np.array(_arr)
-        _arr = ""
     q.close()
-    os.remove(temp_file + ".fa")
+
+    #cleanup temp files
+    if os.path.isfile(dump_temp_file):
+        os.remove(dump_temp_file)
+
+
 
 
     #lowest_coverage = 10000 #set too high to be realistic
@@ -122,10 +147,17 @@ def main():
     #determine kmer cutoff for each strain ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #TODO Throw warning if below X
     cutoff_table = [] #this will hold the cutoff
-    for k, v in strain_objs.iteritems():
-        sys.stdout.write("Strain: {:s}\t Coverage Estimate: {:.1f}\n".format(k, v.coverage))
-        cutoff_table.append(int(v.coverage * .25) + 1)
-        v.set_cutoff(int(v.coverage * .25) + 1)
+    if no_kmer_filtering:
+        for k, v in strain_objs.iteritems():
+            sys.stdout.write("Strain: {:s}\t Coverage Estimate: {:.1f}\n".format(k, v.coverage))
+            cutoff_table.append(0)
+            v.set_cutoff(0)
+
+    else:
+        for k, v in strain_objs.iteritems():
+            sys.stdout.write("Strain: {:s}\t Coverage Estimate: {:.1f}\n".format(k, v.coverage))
+            cutoff_table.append(int(v.coverage * .25) + 1)
+            v.set_cutoff(int(v.coverage * .25) + 1)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     sys.stdout.write(" STRAIN STATS ".center(80, "-") + "\n")
@@ -165,20 +197,23 @@ def main():
     similarity_dict = collections.OrderedDict()
     for i in range(len(count_table_filtered)):
         similarity_dict.update({strain_keys[i] : collections.OrderedDict()})
-        sum_1 = sum(count_table_filtered[i])  #sum of kmers strain 1
+        sum_1 = np.sum(count_table_filtered[i])  #sum of kmers strain 1
         for j in range(i+1, len(count_table_filtered)):
-             sum_2 = sum(count_table_filtered[j]) #sum of kmers strain 2
-             intersection = sum( count_table_filtered[i] + count_table_filtered[j] == 2)
-             total_kmers = sum(count_table_filtered[i] + count_table_filtered[j] > 0)
+             sum_2 = np.sum(count_table_filtered[j]) #sum of kmers strain 2
+             intersection = sum( (count_table_filtered[i] + count_table_filtered[j]) == 2)
+             total_kmers =  sum( (count_table_filtered[i] + count_table_filtered[j]) > 0 )
              smallest = sum_1
              if sum_2 < smallest:
                  smallest = sum_2
-             print sum_1, sum_2, total_kmers, intersection, smallest
+             #print sum_1, sum_2, total_kmers, intersection, smallest
              #print intersection, total_kmers
              similarity_dict[strain_keys[i]].update({
                                                      strain_keys[j] :
                                                          (float(intersection) / total_kmers * 100,
-                                                          float(intersection) / smallest * 100,)
+                                                          float(intersection) / smallest * 100,
+                                                          total_kmers,
+                                                          smallest,
+                                                          )
                                                     })
 
     #DETERMINE RELATIONSHIPS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -196,8 +231,24 @@ def main():
                 _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][1],delimeter)
 
         _str  = _str[:-1] + "\n"
-
     sys.stdout.write(_str + "\n")
+
+    sys.stdout.write("\n\n")
+    _str = delimeter + delimeter.join(strain_keys) + "\n"
+    for i in range(len(strain_keys)):
+        _str += strain_keys[i] + delimeter
+        for j in range(len(strain_keys)):
+            if i == j:
+                _str += "{0}{1}".format(np.sum(count_table_filtered[j]),delimeter)
+            elif i < j:
+                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][2],delimeter)
+            elif i > j:
+                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][3],delimeter)
+
+        _str  = _str[:-1] + "\n"
+    sys.stdout.write(_str + "\n")
+
+
 
 if __name__ == "__main__":
     main()

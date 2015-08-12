@@ -28,7 +28,11 @@ then
 fi
 
 base_file_name=${fastq_1%_*}
-
+echo "starting ${base_file_name}"
+echo "file 1: ${1}"
+echo "file 2: ${2}"
+echo "kmer size: ${3}"
+echo "parent taxid ${4}"
 
 kmer_length=$3
 
@@ -87,7 +91,7 @@ cat ${file_concat} ${file_clean_1_s} ${file_clean_2_s} > ${file_concat_all}
 ##ADD KRAKEN PREPROCESSING
 kraken_db=" --db /home/ksimmon/reference/strian_typing_resources/kraken_strain_typing/ "
 
-kraken_options=" --threads 8 --fasta-input "
+kraken_options=" --threads 8 --fasta-input --preload "
 
 echo "identifying plasmid and genomic sequences "
 $kraken ${kraken_db} ${kraken_options} ${file_concat_all} > "${preprocessed_dir}${base_file_name}_kraken_raw.txt"
@@ -113,12 +117,15 @@ wait
 echo "counting kmers"
 jellyfish_out="${preprocessed_dir}${base_file_name}_jellyfish_${3}.jf"
 
+echo "$jellyfish count -m ${3} -L 2 -t 10 -o ${jellyfish_out} -s 4G -C ${file_concat_all}"
 $jellyfish count -m ${3} -L 2 -t 10 -o ${jellyfish_out} -s 4G -C ${file_concat_all}
 
 jellyfish_plasmid_out="${preprocessed_dir}${base_file_name}_plasmid_jellyfish_${3}.jf"
+echo "$jellyfish count -m ${3} -L 2 -t 10 -o ${jellyfish_plasmid_out} -s 4G -C ${plasmid_fasta}"
 $jellyfish count -m ${3} -L 2 -t 10 -o ${jellyfish_plasmid_out} -s 4G -C ${plasmid_fasta}
 
 jellyfish_genome_out="${preprocessed_dir}${base_file_name}_genome_jellyfish_${3}.jf"
+echo "$jellyfish count - m ${3} -L 2 -t 10 -o ${jellyfish_genome_out} -s 4G -C ${genomic_fasta}"
 $jellyfish count -m ${3} -L 2 -t 10 -o ${jellyfish_genome_out} -s 4G -C ${genomic_fasta}
 
-echo "script finished"
+echo "done ${base_file_name}"
