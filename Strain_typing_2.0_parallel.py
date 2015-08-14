@@ -22,6 +22,7 @@ import collections
 from multiprocessing import Process, Queue
 import string
 import random
+import itertools
 
 
 jellyfish_path = "/home/ksimmon/bin/Jellyfish/bin/jellyfish"
@@ -39,15 +40,19 @@ def count_kmers(q, merged_jf_obj, this_jf_object, cutoff):
     :return: None (puts in queue)    """
     q.put(this_jf_object.get_kmer_count(merged_jf_obj, cutoff))
 
+
 def main():
     """
     The main method which takes a list jf counts (strains) compares them.
     :return: status
     """
     parser = argparse.ArgumentParser(description="the script take multiple jellyfish counts and compares the strains")
-    parser.add_argument("-c", "--cutoff", help="The number of kmers to analyze [Default = None]", type=int, default=None)
+    parser.add_argument("-c", "--cutoff", help="The number of kmers to analyze [Default = None]", type=int,
+                            default=None)
+    parser.add_argument("-t", "--cpus", help="The number of cpus to use when counting kmers in strains [Default is the len of the strain list]",
+                            type=int, default=None)
     parser.add_argument( "--no_kmer_filtering", help="Do not filter kmers based on coverage",
-                         action="store_true", default=False)
+                            action="store_true", default=False)
     parser.add_argument("-k", "--kmer_reference",
                             help="instead of merging strains use kmer reference set for comparison",
                             type=str, default=None)
@@ -55,21 +60,24 @@ def main():
     args = parser.parse_args()
     no_kmer_filtering = args.no_kmer_filtering
     cutoff = args.cutoff
+    cpus = args.cpus
     jf_files = args.jf_files
     kmer_reference = args.kmer_reference
-    ########################################################################################################################
+    ####################################################################################################################
+    # CHECK ARGUMENTS AND ATTRIBUTES
+    ####################################################################################################################
     if kmer_reference is not None and os.path.isfile(kmer_reference) is False:
         sys.stderr.write("kmer reference file does not exist: {0}\n".format(kmer_reference))
         sys.exit(11)
 
-
-
     NUM_OF_STRAINS = len(jf_files) #calculate the number of samples
+    if cpus == None:
+        cpus = NUM_OF_STRAINS
+
     file_paths = []
 
     strain_objs = collections.OrderedDict()  ##KEEP RECORD OF FILE PATHS and CREATE THE STRAIN OBJS FOR EACH STRAIN
     for f in jf_files:
-
         if os.path.exists(f) == False: ##MAKE SURE THE FILE EXISTS
             sys.stderr.write("file does not exist: {0}\n".format(f))
             sys.exit(1)
@@ -78,23 +86,20 @@ def main():
 
         strain_objs.update({strain_name : jfobj.jf_object(strain_name, f)})
 
-
     if len(strain_objs) != NUM_OF_STRAINS: ##MAKE SURE THE NAMES ARE UNIQUE
         sys.stderr.write("strain names are not unique:\n{0}\n".format(", ".join(strain_objs.keys())))
         sys.exit(2)
 
-    #######################################################################################################################
+    ####################################################################################################################
     temp_file =  "/tmp/tmp_{0}".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
     jf_temp_file = temp_file + ".jf"
     dump_temp_file = temp_file + ".txt"
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #  COMPARE STRAINS DIRECTLY
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if kmer_reference is None:
-    #create merged file
-        #merge strain files together
-
-
         try:
-            subprocess.check_call([jellyfish_path,
-                                   "merge", '-L', "2", "-o", jf_temp_file] + file_paths )
+            subprocess.check_call([jellyfish_path, "merge", '-L', "2", "-o", jf_temp_file] + file_paths )
         except:
             sys.stderr.write("Error in running jellyfish merge\n")
             sys.exit(3)
@@ -109,34 +114,54 @@ def main():
 
         os.remove(jf_temp_file)
         merged_jf = dump_temp_file
-    else: #supply my own kmer set.
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #  USE USER SUPPLIED KMER LIST  [kmer\tcount]
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    else:
         merged_jf = kmer_reference
+
+
+
+
     ########################################################################################################################
     #START THE WORK
     ########################################################################################################################
     count_table = [[] for i in range(len(strain_objs)) ]
-    kmer_table = []
+    #kmer_table = []
     counter = 0
     attach = count_table.append
 
-    q = Queue(maxsize=8)
-    jobs = []
-    for _obj in strain_objs.itervalues():
-        p = Process(target=count_kmers, args=( q, merged_jf, _obj, cutoff, ))
-        #print q.qsize()
-        jobs.append(p)
-    for j in jobs:
-        j.start()
-    for j in jobs:
-        _name, _arr = q.get()
-        count_table[strain_objs.keys().index(_name)]=np.array(_arr)
+
+    q = Queue() #TODO EXPLORE PIPES
+    #create the job queue
+    jobs = [ [] * cpus  for i in range(int(np.ceil((float(len(strain_objs)) / cpus))))   ]
+    objects_to_count = enumerate(strain_objs.itervalues())
+
+    ##PRIME THE JOB QUEUE
+    for chunk in jobs:
+        for i in range(cpus):
+            try:
+                _obj = objects_to_count.next()[1]
+                p = Process(target=count_kmers, args=( q, merged_jf, _obj, cutoff, ))
+                chunk.append(p)
+            except:
+                break
+
+    ## START THE JOBS IN CHUNKS
+    num_of_strains_counted = 0
+    for chunk in jobs:
+        num_of_strains_counted += len(chunk)
+        for j in chunk:
+            j.start()
+        for j in chunk:
+            _name, _arr = q.get() #PAUSES UNTIL ALL JOBS RETURN
+            count_table[strain_objs.keys().index(_name)]=np.array(_arr)
+        sys.stderr.write("{0}\tof\t{1}\tstrains processed\n".format(num_of_strains_counted, len(strain_objs)))
     q.close()
 
     #cleanup temp files
     if os.path.isfile(dump_temp_file):
         os.remove(dump_temp_file)
-
-
 
 
     #lowest_coverage = 10000 #set too high to be realistic
@@ -247,7 +272,6 @@ def main():
 
         _str  = _str[:-1] + "\n"
     sys.stdout.write(_str + "\n")
-
 
 
 if __name__ == "__main__":

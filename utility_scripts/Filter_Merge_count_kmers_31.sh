@@ -17,22 +17,27 @@ source /home/ksimmon/.bashrc
 fastq_1=${1##*/} #get the filename without dir
 fastq_2=${2##*/}
 
-#echo ${fastq_1%_*}
-#echo ${fastq_2%_*}
 
-if [ ${fastq_1%_*} != ${fastq_2%_*} ]
+suffix=${5}
+
+base_file_name="${fastq_1%${5}*}"
+echo "Prefix: ${base_file_name}"
+echo "file 1: ${1}"
+echo "file 2: ${2}"
+echo "kmer size: ${3}"
+echo "parent taxid: ${4}"
+echo "file_suffix:  ${5}"
+
+
+if [ ${fastq_1%_${5}*} != ${fastq_2%_${5}*} ]
 then
-    >&2 echo "base file names not equal"
+    >&2 echo "base file names not equal ${fastq_1%_${5}} ${fastq_2%_${5}}"
     >&2 echo "make sure the files are properly mated"
     exit 1;
 fi
 
-base_file_name=${fastq_1%_*}
-echo "starting ${base_file_name}"
-echo "file 1: ${1}"
-echo "file 2: ${2}"
-echo "kmer size: ${3}"
-echo "parent taxid ${4}"
+
+
 
 kmer_length=$3
 
@@ -115,7 +120,7 @@ python "/home/ksimmon/PycharmProjects/strain_typing/Strain_typing/utility_script
 
 wait
 echo "counting kmers"
-jellyfish_out="${preprocessed_dir}${base_file_name}_jellyfish_${3}.jf"
+jellyfish_out="${preprocessed_dir}${base_file_name}_all_jellyfish_${3}.jf"
 
 echo "$jellyfish count -m ${3} -L 2 -t 10 -o ${jellyfish_out} -s 4G -C ${file_concat_all}"
 $jellyfish count -m ${3} -L 2 -t 10 -o ${jellyfish_out} -s 4G -C ${file_concat_all}
