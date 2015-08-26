@@ -117,3 +117,6 @@ class jf_object:
             if break_point is not None and counter >= break_point:
                 break
         return (self.name, _arr)
+
+    def compare_to_ardb(self, jfdb):
+        pass

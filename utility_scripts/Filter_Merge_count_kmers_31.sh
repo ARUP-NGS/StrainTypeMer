@@ -20,21 +20,21 @@ fastq_2=${2##*/}
 
 suffix=${5}
 
-base_file_name="${fastq_1%${5}*}"
+base_file_name="${5}"
 echo "Prefix: ${base_file_name}"
 echo "file 1: ${1}"
 echo "file 2: ${2}"
 echo "kmer size: ${3}"
 echo "parent taxid: ${4}"
-echo "file_suffix:  ${5}"
+echo "file_base:  ${5}"
 
 
-if [ ${fastq_1%_${5}*} != ${fastq_2%_${5}*} ]
-then
-    >&2 echo "base file names not equal ${fastq_1%_${5}} ${fastq_2%_${5}}"
-    >&2 echo "make sure the files are properly mated"
-    exit 1;
-fi
+#if [ ${fastq_1%_${5}*} != ${fastq_2%_${5}*} ]
+#then
+#    >&2 echo "base file names not equal ${fastq_1%_${5}} ${fastq_2%_${5}}"
+#    >&2 echo "make sure the files are properly mated"
+#    exit 1;
+#fi
 
 
 

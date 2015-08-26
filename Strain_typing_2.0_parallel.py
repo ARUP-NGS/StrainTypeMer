@@ -10,7 +10,7 @@ assume sample name is before underscore
 """
 import jf_object as jfobj
 
-import jellyfish
+# import jellyfish
 import numpy as np
 from numpy import sum
 
@@ -22,11 +22,10 @@ import collections
 from multiprocessing import Process, Queue
 import string
 import random
-import itertools
+# import itertools
 
 
 jellyfish_path = "/home/ksimmon/bin/Jellyfish/bin/jellyfish"
-threads = 8
 
 def count_kmers(q, merged_jf_obj, this_jf_object, cutoff):
     """
@@ -48,15 +47,17 @@ def main():
     """
     parser = argparse.ArgumentParser(description="the script take multiple jellyfish counts and compares the strains")
     parser.add_argument("-c", "--cutoff", help="The number of kmers to analyze [Default = None]", type=int,
-                            default=None)
-    parser.add_argument("-t", "--cpus", help="The number of cpus to use when counting kmers in strains [Default is the len of the strain list]",
-                            type=int, default=None)
+              default=None)
+    parser.add_argument("-t", "--cpus",
+              help="The number of cpus to use when counting kmers in strains [Default is the len of the strain list]",
+              type=int, default=2)
     parser.add_argument( "--no_kmer_filtering", help="Do not filter kmers based on coverage",
-                            action="store_true", default=False)
+              action="store_true", default=False)
     parser.add_argument("-k", "--kmer_reference",
-                            help="instead of merging strains use kmer reference set for comparison",
-                            type=str, default=None)
+              help="instead of merging strains use kmer reference set for comparison",
+              type=str, default=None)
     parser.add_argument('jf_files', nargs='+', help='jellyfish files for each strain')
+
     args = parser.parse_args()
     no_kmer_filtering = args.no_kmer_filtering
     cutoff = args.cutoff
@@ -103,8 +104,8 @@ def main():
         except:
             sys.stderr.write("Error in running jellyfish merge\n")
             sys.exit(3)
-        #dump kmers out to a file [Technically I should be able to avoid this however a jellyfish bug causes the loss of
-        # canonicalization for merged sets ] dumping out to txt file avoids this.
+        # dump kmers out to a file [Technically I should be able to remove this however a jellyfish bug causes the loss
+        # of canonicalization for merged sets ] dumping out to txt file avoids this.
         try:
             subprocess.check_call([jellyfish_path,
                                    "dump", '-c',  "-t", "-o", dump_temp_file, jf_temp_file] )
@@ -127,37 +128,43 @@ def main():
     #START THE WORK
     ########################################################################################################################
     count_table = [[] for i in range(len(strain_objs)) ]
-    #kmer_table = []
     counter = 0
     attach = count_table.append
 
-
+    #~~~~~~~~~~~~~~~ MULTIPROCESS THIS MOFO ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     q = Queue() #TODO EXPLORE PIPES
     #create the job queue
-    jobs = [ [] * cpus  for i in range(int(np.ceil((float(len(strain_objs)) / cpus))))   ]
-    objects_to_count = enumerate(strain_objs.itervalues())
-
-    ##PRIME THE JOB QUEUE
-    for chunk in jobs:
-        for i in range(cpus):
-            try:
-                _obj = objects_to_count.next()[1]
-                p = Process(target=count_kmers, args=( q, merged_jf, _obj, cutoff, ))
-                chunk.append(p)
-            except:
-                break
-
-    ## START THE JOBS IN CHUNKS
+    jobs = strain_objs.values()
     num_of_strains_counted = 0
-    for chunk in jobs:
-        num_of_strains_counted += len(chunk)
-        for j in chunk:
-            j.start()
-        for j in chunk:
-            _name, _arr = q.get() #PAUSES UNTIL ALL JOBS RETURN
-            count_table[strain_objs.keys().index(_name)]=np.array(_arr)
+    current_processes = []
+    for cpu in range(cpus):
+        _obj = jobs.pop()
+        p = Process(target=count_kmers, args=(q, merged_jf, _obj, cutoff,), name=_obj.name)
+        current_processes.append(p)
+
+    #start the jobs for the correct number of cpus
+    while len(current_processes) != 0:
+        current_processes.pop().start()
+
+    #keep the queue moving
+    while len(jobs) != 0:
+        _name, _arr = q.get() #PAUSES UNTIL A JOBS RETURN  #AM I WIATING FOR THE FIRST OBJECT
+        num_of_strains_counted += 1
         sys.stderr.write("{0}\tof\t{1}\tstrains processed\n".format(num_of_strains_counted, len(strain_objs)))
+        count_table[strain_objs.keys().index(_name)]=np.array(_arr)
+        #start next job
+        p = Process(target=count_kmers, args=( q, merged_jf, jobs.pop(), cutoff, ),name=_obj.name)
+        p.start()
+    #nothing else to start
+
+    #wait until the queue returns 'ALL THE THINGS'
+    while num_of_strains_counted != len(strain_objs): ##finished processing
+        _name, _arr = q.get() #PAUSES UNTIL A JOBS RETURN
+        num_of_strains_counted += 1
+        sys.stderr.write("{0}\tof\t{1}\tstrains processed\n".format(num_of_strains_counted, len(strain_objs)))
+        count_table[strain_objs.keys().index(_name)]=np.array(_arr)
     q.close()
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #cleanup temp files
     if os.path.isfile(dump_temp_file):
@@ -217,7 +224,7 @@ def main():
     strain_keys = strain_objs.keys()
 
 
-    #DETERMINE RELATIONSHIPS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #DETERMINE RELATIONSHIPS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     similarity_dict = collections.OrderedDict()
     for i in range(len(count_table_filtered)):
@@ -241,8 +248,7 @@ def main():
                                                           )
                                                     })
 
-    #DETERMINE RELATIONSHIPS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+    #PRINT SIMILARITY TABlE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     delimeter = ","
     _str = delimeter + delimeter.join(strain_keys) + "\n"
     for i in range(len(strain_keys)):
@@ -251,28 +257,27 @@ def main():
             if i == j:
                 _str +=  "100" + delimeter
             elif i < j:
-                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][0],delimeter)
+                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][0], delimeter)
             elif i > j:
-                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][1],delimeter)
-
+                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][1], delimeter)
         _str  = _str[:-1] + "\n"
     sys.stdout.write(_str + "\n")
 
+    #ADD DENOMINATOR TO OUTPUT
     sys.stdout.write("\n\n")
     _str = delimeter + delimeter.join(strain_keys) + "\n"
     for i in range(len(strain_keys)):
         _str += strain_keys[i] + delimeter
         for j in range(len(strain_keys)):
             if i == j:
-                _str += "{0}{1}".format(np.sum(count_table_filtered[j]),delimeter)
+                _str += "{0}{1}".format(np.sum(count_table_filtered[j]), delimeter)
             elif i < j:
-                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][2],delimeter)
+                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][2], delimeter)
             elif i > j:
-                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][3],delimeter)
-
+                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][3], delimeter)
         _str  = _str[:-1] + "\n"
     sys.stdout.write(_str + "\n")
-
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if __name__ == "__main__":
     main()
