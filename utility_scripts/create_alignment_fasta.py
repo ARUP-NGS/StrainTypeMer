@@ -1,7 +1,7 @@
-__author__ = 'keith simmon'
+__author__ = 'ksimmon'
 
 import argparse
-import sys
+
 parser = argparse.ArgumentParser(description="the script take multiple jellyfish counts and compares the strains")
 parser.add_argument('vcf_files', nargs='+', help='jellyfish files for each strain', type=argparse.FileType("r"))
 
@@ -31,7 +31,17 @@ for f in vcf_files:
                         no_of_ref_reads = int(info["DPR"])  ## non_variant
                     except: ## multic alleles
                         pass
-
+                        # try:
+                        # #     no_of_ref_reads, no_of_alt_reads_1, no_of_alt_reads_2 =  [int(v) for v in info["DPR"].split(",")] ##variant
+                        # #     if no_of_alt_reads_1 > no_of_alt_reads_2:
+                        # #         no_of_alt_reads = no_of_alt_reads_1
+                        # #         alt = alt.split(",")[0]
+                        # #     else:
+                        # #         no_of_alt_reads = no_of_alt_reads_2
+                        # #         alt = alt.split(",")[1]
+                        # except:
+                        #     no_of_ref_reads, no_of_alt_reads = 0, 0 ## mask this position
+                        #     print line
                 mapping_qual= info["MQ"]
                 try:
                     mapping_qual = int(mapping_qual)
@@ -55,8 +65,7 @@ for f in vcf_files:
                             else:
                                _results.pop(pos)
     #print "strain counted"
-    sys.stderr.write("{0}\t{1}\tavg read depth\n".format(f.name.split("/")[-1].split("_")[0],
-                                            "{:.1f}".format(float(_cov)/ len(_results))))
+    print "{0}\t{1}\tavg read depth".format(f.name.split("/")[-1].split("_")[0], "{:.1f}".format(float(_cov)/ len(_results)))
     vcf_results.append(_results)
 
 
@@ -94,7 +103,14 @@ for i in range(len(vcf_files)):
             results_intersection[i][j] = ( len(intersection_set), len(vcf_results[i]), len(vcf_results[j]), )
             results_intersection[j][i] = ( len(intersection_set), len(vcf_results[i]), len(vcf_results[j]), )
 
-
+            #print "~" * 80
+            #print "Sample_1:\t{0}\nSample_2:\t{1}".format(vcf_files[i].name.split("/")[-1].split("_")[0], vcf_files[j].name.split("/")[-1].split("_")[0])
+            #print "s1:\t{0}\tpositions passing filters\ns2:\t{1}\tpositions passing filters".format(len(vcf_results[i]), len(vcf_results[j]))
+            #print "{0}\tintersecting positions passing filters".format(len(intersection_set))
+            #print "{0}\tgenomic differences".format(int(dif))
+            #print "{0}%\tpercent of genomic differences".format("{:.2f}".format(dif/tot * 100))
+            #print "~" * 80
+            #print
 
 _str =","
 for f in vcf_files:
@@ -108,10 +124,10 @@ for i, f in enumerate(vcf_files):
     _str = _str[:-1] + "\n"
 
 print
-sys.stdout.write("[SIMILARITY TABLE]\n")
-sys.stdout.write(_str)
-sys.stdout.write("[SIMILARITY TABLE END]\n")
-
+print
+print _str
+print
+print
 
 _str = ","
 for f in vcf_files:
@@ -119,9 +135,7 @@ for f in vcf_files:
 _str = _str[:-1] + "\n"
 for i, f in enumerate(vcf_files):
     _str += f.name.split("/")[-1].split("_")[0] + ","
-    for j, v in enumerate(results_intersection[i]):
+    for j,v in enumerate(results_intersection[i]):
         _str += str("i:{0};s1:{1};s2:{2}".format( v[0],v[1],v[2], )) + ","
     _str = _str[:-1] + "\n"
-sys.stdout.write("[INTERSECTION TABLE]\n")
-sys.stdout.write(_str)
-sys.stdout.write("[INTERSECTION TABLE END]\n")
+print _str

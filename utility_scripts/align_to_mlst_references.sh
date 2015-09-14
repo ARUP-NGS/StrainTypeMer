@@ -10,7 +10,6 @@
 # 4) sort, index, pileup
 # 5)
 #############################################################################################
-
 ################   PATHS  ############################################################
 #fastq_dir="/home/ksimmon/data/strain_typing/Acineto_combined/raw_fastqs/"
 #mlst_dir="/home/ksimmon/data/strain_typing/Acineto_combined/MLST/"

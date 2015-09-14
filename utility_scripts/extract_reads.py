@@ -7,7 +7,7 @@ from Bio import SeqIO
 parser = argparse.ArgumentParser(description="extract reads from genome reads from kraken results")
 
 parser.add_argument("--kraken_input", help="kraken output", type=argparse.FileType('r'))
-parser.add_argument("--fasta_file", help="fasta file to extract sequences", type=str)
+parser.add_argument("--fasta_file", help="fasta file to extract sequencegres", type=str)
 parser.add_argument('--taxonomy_file',  help='jellyfish files for each strain', type=argparse.FileType('r'))
 parser.add_argument('--parent_taxid',  help='parent taxid to extract', type=int)
 

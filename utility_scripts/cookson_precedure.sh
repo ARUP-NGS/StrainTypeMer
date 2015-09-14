@@ -10,6 +10,7 @@
 #
 # $1 fastq_1.gz
 # $2 fastq_2.gz
+# $3 base_file_name
 
 source /home/ksimmon/.bashrc
 
@@ -21,14 +22,19 @@ fastq_2=$(basename $2)
 base_file_name="${3}"
 echo "Prefix: ${base_file_name}"
 echo "file 1: ${fastq_1}"
-echo "file 2: ${fastq_1}"
-
+echo "file 2: ${fastq_2}"
+reference="${4}"
+echo "reference_file: ${reference}"
 
 cutadapt="/home/ksimmon/anaconda/bin/cutadapt"
 prinseq="perl /home/ksimmon/bin/prinseq-lite-0.20.4/prinseq-lite.pl"
 bwa="/home/ksimmon/bin/bwa-0.7.12/bwa"
 samtools="/home/ksimmon/bin/samtools-1.2/samtools"
 bcftools="/home/ksimmon/bin/bcftools/bcftools"
+
+
+#reference="/home/ksimmon/reference/strian_typing_resources/acinetobacter_genomes/CU459141.fa"
+
 
 #jellyfish="/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
 #concat_fastq="python /home/ksimmon/bin/Taxonomer/utilities/concatenate_fastqs_2.0.py"
@@ -69,8 +75,8 @@ prinseq_params=" -out_format 3 -line_width 0 -derep 1 -min_len 30 -ns_max_p 2 "
 $prinseq  -fastq ${file_1_trimmed} -fastq2 ${file_2_trimmed} -out_good ${file_clean_base} -out_bad ${file_failed_base} ${prinseq_params} >> ${log_file} 2>&1
 #
 sam_file="${preprocessed_dir}${base_file_name}.sam"
-reference="/home/ksimmon/reference/strian_typing_resources/acinetobacter_genomes/CU459141.fa"
-$bwa mem -t 8 -T 10 "${reference}" "${file_clean_1}" "${file_clean_2}" > "${sam_file}"
+
+$bwa mem -t 4 -T 10 "${reference}" "${file_clean_1}" "${file_clean_2}" > "${sam_file}"
 
 
 bam_file="${preprocessed_dir}${base_file_name}.bam"
