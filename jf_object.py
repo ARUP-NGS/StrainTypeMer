@@ -43,7 +43,7 @@ class jf_object:
         self.ardb_info_parsed = self.__parser_ardb_info()
         self.get_stats()
         self.histo = self.get_histo()
-        self.get_estimate_coverage()
+        self.coverage = self.get_estimate_coverage()
         self.__check_resources()
         self.shared_count = None
 
@@ -108,9 +108,9 @@ class jf_object:
         """Estimates the coverage for kmers count > 3 times"""
         try:
             #sum of kmers count / the kmers (distinict) count
-            self.coverage = np.sum([float(i) * self.histo[i] for i in self.histo]) / float(np.sum(self.histo.values()[3:]))
+            return np.sum([float(i) * self.histo[i] for i in self.histo]) / float(np.sum(self.histo.values()[3:]))
         except:
-            self.coverage = 0
+            return 0
 
 
     def estimate_genome_size(self, coverage_cutoff):

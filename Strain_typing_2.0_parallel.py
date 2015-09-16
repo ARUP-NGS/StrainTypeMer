@@ -20,8 +20,9 @@ import collections
 from multiprocessing import Process, Queue
 import string
 import random
-import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+
 
 ## CONFIGURATION INFORMATION ###########################################################################################
 jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
@@ -30,18 +31,18 @@ jfobj.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_f
 jfobj.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
 ########################################################################################################################
 
-def chuck_list(_OrderedDict, step=4):
+def chuck_list(_OrderedDict, chunk_size=5):
     """
     little method that helps to break the number of strains into chunks so that the histograms are printed on a
     reasonably scaled PDF
 
     :param _list: 1d list
-    :param step: chunks size
+    :param chunk_size: chunks size
     :return: 2d array with equal chunks [last chunk may be smaller]
     """
     _l = []
-    for i in range(0, len(_OrderedDict), step):
-        _l.append(_OrderedDict.items()[i : i + step])
+    for i in range(0, len(_OrderedDict), chunk_size):
+        _l.append(_OrderedDict.items()[i : i + chunk_size])
     return _l
 
 def generate_histo_values(jf_obj):
@@ -52,7 +53,8 @@ def generate_histo_values(jf_obj):
     :return: frequency count [1-150] and count at each frequency
     """
     histo = collections.OrderedDict()
-    histo = {i : 0 for i in range(1, 151)}
+    for i in range(1, 151):
+        histo.update({i:0})
     for k, v in  jf_obj.histo.iteritems():
         if k in histo:
             histo[k] += v
@@ -60,7 +62,7 @@ def generate_histo_values(jf_obj):
             histo[150] += v
     return histo.keys(), histo.values()
 
-def output_histo(jf_objects, xlim=350000, ylim=150):
+def produce_histograms(jf_objects, ylim=350000, xlim=80):
     """
     This will take the list of jellyfish objects (i.e. strains) and create a histogram of the kmers counts
 
@@ -71,50 +73,69 @@ def output_histo(jf_objects, xlim=350000, ylim=150):
     :return: None writes out multiple pdfs with histograms for each strain
     """
     jf_chunks = chuck_list(jf_objects)
+    plot_count = 1
     for chunk in jf_chunks:
-        for strain in chunk:
-            fig, ax = plt.subplots(len(chunk), figsize=(10,7), sharex=True, sharey=True)
-            idx = 0
-            plt.xlim(0,150)
-            plt.ylim(0,350000)
-            #plt.xticks(range(0,350000), [0, 100000])
-            fig.subplots_adjust(hspace = .5, wspace=.001)
-            for name, strain in chunk:
-                N = len(strain.histo)
-                print N
-                freq, count = generate_histo_values(strain)
-                ind = np.arange(N)  # the x locations for the groups
-                width = 1      # the width of the bars
-                plt.bar(freq, count, width, color='r')
-                #ax[0].set_title("histogram of kmers observed at different counts")
-                ax.set_title(name)
-                idx += 1
-    ax[len(chunk) / 2].set_ylabel("Distinct kmers")
-    ax[len(chunk) - 1].set_xlabel("Frequency at which a kmer occurs")
-    plt.show()
-    #plt.savefig(name + "_histo.png",)
+        fig, ax = plt.subplots(len(chunk), sharex=True, sharey=True,)
+        fig.set_size_inches(11, 8.5)
+        idx = 0
+        plt.xlim(2,xlim)
+        plt.ylim(0,ylim)
 
+        fig.subplots_adjust(hspace = .3, wspace=.001)
 
-    #TODO
+        for name, strain in chunk:
+            freq, count = generate_histo_values(strain)
+            width = 0.8 # the width of the bars
+            ax[idx].bar(freq, count, width, color='g', linewidth=.5)
+            ax[idx].set_title(name, fontsize=13)
+            ax[idx].spines['top'].set_visible(False)
+            ax[idx].spines['right'].set_visible(False)
+            ax[idx].yaxis.set_ticks_position('left')
+            ax[idx].xaxis.set_ticks_position('bottom')
 
+            #cutoff
+            ax[idx].plot([strain.kmer_cutoff, strain.kmer_cutoff], [0, ylim], "--", color='#C24641' ) ##add threshold line
+            ax[idx].annotate('mers counted <{0} excluded'.format(strain.kmer_cutoff),
+                             xy=(strain.kmer_cutoff, ylim * .95),
+                             xytext=(strain.kmer_cutoff + .4, ylim * .95), fontsize=7, color='#C24641', rotation=90)
+            ax[idx].add_patch(Rectangle((0, 0), strain.kmer_cutoff, ylim, alpha=.5, facecolor='#C24641', linewidth=0))
 
+            #estimated coverage
+            ax[idx].plot([strain.coverage, strain.coverage], [0, ylim], "k--") ##add threshold line
+            ax[idx].annotate('{:.1f}x estimated coverage'.format(strain.coverage), xy=(strain.coverage, ylim * .90),
+                             xytext=(strain.coverage + .8, ylim * .90), fontsize=8, color='#483C32')
 
+            #estimate genome size
+            ax[idx].annotate('Estimated genome size\n{:,} bp'.format(strain.estimate_genome_size(strain.kmer_cutoff)),
+                             xy=(xlim * .90, ylim * .80),
+                             xytext=(xlim * .90 , ylim * .80), fontsize=8, color='#483C32', horizontalalignment='right')
+            idx += 1
+            #~~~~~~~~
 
-    #PDF file containing histograms
-    return None #the return will be none
+        ax[len(chunk) / 2].set_ylabel("kmers with a given count (x100)", fontsize=12)
+        ax[len(chunk) - 1].set_xlabel("kmer frequency", fontsize=12)
+
+        _xticks = np.arange(0, xlim + 1, 5)
+        _xticks[0] = 2
+        plt.xticks(_xticks, fontsize=9)
+        plt.yticks(np.arange(0, ylim + 1, 50000), np.arange(0, ylim + 1, 50000) / 100, )
+
+        plt.savefig("histo_{0}.pdf".format(plot_count), transparent=True)
+        plot_count += 1
+        plt.close()
+    return
 
 
 def count_kmers(q, merged_jf_obj, this_jf_object, cutoff):
     """
     This function facilitates the queuing of the jellyfish counting
-
     Takes a jellyfish object merged from all the strains and calls the gets kmer count for the queried strain
-
     :param q: queue
     :param merged_jf_obj: merged count of all strains
     :param this_jf_object: strain jf object
     :return: None (puts in queue)    """
     q.put(this_jf_object.get_kmer_count(merged_jf_obj, cutoff))
+    return
 
 
 def main():
@@ -142,6 +163,10 @@ def main():
               help="instead of merging strains use kmer reference set for comparison",
               type=str, default=None)
 
+    parser.add_argument("--do_not_output_histograms",
+                        help="This will prevent the output of the PDF files containing the histograms",
+                        default=True, action="store_false")
+
     parser.add_argument('jf_files', nargs='+', help='jellyfish files for each strain')
 
     args = parser.parse_args()
@@ -151,15 +176,16 @@ def main():
     coverage_cutoff = args.coverage_cutoff
     jf_files = args.jf_files
     kmer_reference = args.kmer_reference
-
+    output_histogram = args.do_not_output_histograms
 
     compare_strains(jf_files=jf_files, no_kmer_filtering=no_kmer_filtering, cutoff=cutoff, cpus=cpus,
-                    coverage_cutoff=coverage_cutoff,kmer_reference=kmer_reference)
+                    coverage_cutoff=coverage_cutoff,kmer_reference=kmer_reference, output_histogram=output_histogram)
+    return
+
+def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, kmer_reference, output_histogram):
     ####################################################################################################################
     # CHECK ARGUMENTS AND ATTRIBUTES
     ####################################################################################################################
-
-def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, kmer_reference):
     if kmer_reference is not None and os.path.isfile(kmer_reference) is False:
         sys.stderr.write("kmer reference file does not exist: {0}\n".format(kmer_reference))
         sys.exit(11)
@@ -276,7 +302,6 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
 
 
     #determine kmer cutoff for each strain ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    #TODO Throw warning if below X
     cutoff_table = [] #this will hold the cutoff
     if no_kmer_filtering:
         for k, v in strain_objs.iteritems():
@@ -335,7 +360,9 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     strain_keys = strain_objs.keys()
 
 
-    output_histo(strain_objs)
+    # WRITE OUT HISTOGRAMS
+    if output_histogram:
+        produce_histograms(strain_objs)
 
     #DETERMINE RELATIONSHIPS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     similarity_dict = collections.OrderedDict()
@@ -401,6 +428,7 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
             sys.stdout.write("ARDB_CODE:\t{0}\n\tKMER_COUNT:\t{1}\n\tARDB_INFO:\t{2}\n".format(
                 k, ardb_results[strain][k], _obj.get_ardb_info(k)))
     sys.stdout.write("[ARDB INFORMATION END]\n")
+    return
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
