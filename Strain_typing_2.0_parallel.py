@@ -20,17 +20,88 @@ import collections
 from multiprocessing import Process, Queue
 import string
 import random
+import matplotlib.mlab as mlab
+import matplotlib.pyplot as plt
 
 ## CONFIGURATION INFORMATION ###########################################################################################
 jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
 jfobj.jellyfish_path = jellyfish_path
 jfobj.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
 jfobj.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
-#######################################################################################################
+########################################################################################################################
+
+def chuck_list(_OrderedDict, step=4):
+    """
+    little method that helps to break the number of strains into chunks so that the histograms are printed on a
+    reasonably scaled PDF
+
+    :param _list: 1d list
+    :param step: chunks size
+    :return: 2d array with equal chunks [last chunk may be smaller]
+    """
+    _l = []
+    for i in range(0, len(_OrderedDict), step):
+        _l.append(_OrderedDict.items()[i : i + step])
+    return _l
+
+def generate_histo_values(jf_obj):
+    """
+    returns the freq and count of 300 kmers
+
+    :param jf_obj: will retrieve the histo object
+    :return: frequency count [1-150] and count at each frequency
+    """
+    histo = collections.OrderedDict()
+    histo = {i : 0 for i in range(1, 151)}
+    for k, v in  jf_obj.histo.iteritems():
+        if k in histo:
+            histo[k] += v
+        elif k > 150:
+            histo[150] += v
+    return histo.keys(), histo.values()
 
 def output_histo(jf_objects, xlim=350000, ylim=150):
-    pass
+    """
+    This will take the list of jellyfish objects (i.e. strains) and create a histogram of the kmers counts
 
+    :param strain_names: [list of strain names]
+    :param jf_objects: [list of jf objects]
+    :param xlim: the highest value on the x axis
+    :param ylim: the highest value on the y axis
+    :return: None writes out multiple pdfs with histograms for each strain
+    """
+    jf_chunks = chuck_list(jf_objects)
+    for chunk in jf_chunks:
+        for strain in chunk:
+            fig, ax = plt.subplots(len(chunk), figsize=(10,7), sharex=True, sharey=True)
+            idx = 0
+            plt.xlim(0,150)
+            plt.ylim(0,350000)
+            #plt.xticks(range(0,350000), [0, 100000])
+            fig.subplots_adjust(hspace = .5, wspace=.001)
+            for name, strain in chunk:
+                N = len(strain.histo)
+                print N
+                freq, count = generate_histo_values(strain)
+                ind = np.arange(N)  # the x locations for the groups
+                width = 1      # the width of the bars
+                plt.bar(freq, count, width, color='r')
+                #ax[0].set_title("histogram of kmers observed at different counts")
+                ax.set_title(name)
+                idx += 1
+    ax[len(chunk) / 2].set_ylabel("Distinct kmers")
+    ax[len(chunk) - 1].set_xlabel("Frequency at which a kmer occurs")
+    plt.show()
+    #plt.savefig(name + "_histo.png",)
+
+
+    #TODO
+
+
+
+
+    #PDF file containing histograms
+    return None #the return will be none
 
 
 def count_kmers(q, merged_jf_obj, this_jf_object, cutoff):
@@ -52,19 +123,25 @@ def main():
     :return: status
     """
     parser = argparse.ArgumentParser(description="the script take multiple jellyfish counts and compares the strains")
+
     parser.add_argument("-c", "--cutoff", help="The number of kmers to analyze [Default = None]", type=int,
               default=None)
+
     parser.add_argument("--coverage_cutoff", help="percent of genome coverage to set kmer filters [DEFAULT .20 if "  + \
                                                   "coverage is 30 [(30 * .20) = 6] kmers with a count < 5 will " + \
                                                   "be ignored for cooresponding strain", type=float, default=.20)
+
     parser.add_argument("-t", "--cpus",
               help="The number of cpus to use when counting kmers in strains [Default is the len of the strain list]",
               type=int, default=2)
+
     parser.add_argument( "--no_kmer_filtering", help="Do not filter kmers based on coverage",
               action="store_true", default=False)
+
     parser.add_argument("-k", "--kmer_reference",
               help="instead of merging strains use kmer reference set for comparison",
               type=str, default=None)
+
     parser.add_argument('jf_files', nargs='+', help='jellyfish files for each strain')
 
     args = parser.parse_args()
@@ -76,7 +153,8 @@ def main():
     kmer_reference = args.kmer_reference
 
 
-    compare_strains(jf_files=jf_files, no_kmer_filtering=no_kmer_filtering, cutoff=cutoff, cpus=cpus, coverage_cutoff=coverage_cutoff,kmer_reference=kmer_reference)
+    compare_strains(jf_files=jf_files, no_kmer_filtering=no_kmer_filtering, cutoff=cutoff, cpus=cpus,
+                    coverage_cutoff=coverage_cutoff,kmer_reference=kmer_reference)
     ####################################################################################################################
     # CHECK ARGUMENTS AND ATTRIBUTES
     ####################################################################################################################
@@ -89,7 +167,6 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     NUM_OF_STRAINS = len(jf_files) #calculate the number of samples
     if cpus == None or cpus > NUM_OF_STRAINS:
         cpus = NUM_OF_STRAINS
-
 
 
     file_paths = []
@@ -135,7 +212,6 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     else:
         merged_jf = kmer_reference
-
 
 
 
@@ -195,7 +271,6 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
         os.remove(dump_temp_file)
 
 
-    #lowest_coverage = 10000 #set too high to be realistic
     sys.stdout.write(" COVERAGE INFORMATION ".center(80, "-") + "\n")
     sys.stdout.write("calculations only include kmers counted > 3 times\n")
 
@@ -206,14 +281,26 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     if no_kmer_filtering:
         for k, v in strain_objs.iteritems():
             sys.stdout.write("Strain: {:s}\t Coverage Estimate: {:.1f}\n".format(k, v.coverage))
-            cutoff_table.append(0)
+            #cutoff_table.append(0)
             v.set_cutoff(0)
+
 
     else:
         for k, v in strain_objs.iteritems():
             sys.stdout.write("Strain: {:s}\t Coverage Estimate: {:.1f}\n".format(k, v.coverage))
             cutoff_table.append(math.ceil(v.coverage * coverage_cutoff))
-            v.set_cutoff(math.ceil(v.coverage * coverage_cutoff))
+            if math.ceil(v.coverage * coverage_cutoff) <= 3:
+                sys.stderr.write(" WARNING ".center(80, "-") + "\n")
+                sys.stderr.write("Strain: {0} has low coverage\n".format(k))
+                sys.stderr.write("Calculated cutoff is {0}\n".format(int(math.ceil(v.coverage * coverage_cutoff))))
+                if (math.ceil(v.coverage * coverage_cutoff)) < 3:
+                    sys.stderr.write("Changing kmer cutoff to 3\n")
+                    v.set_cutoff(3)
+                sys.stderr.write("If estimated genome size is lower than expected consider repeating\n")
+                sys.stderr.write("".center(80, "-") + "\n\n")
+                v.set_cutoff(int(math.ceil(v.coverage * coverage_cutoff)))
+            else:
+                v.set_cutoff(int(math.ceil(v.coverage * coverage_cutoff)))
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     sys.stdout.write(" STRAIN STATS ".center(80, "-") + "\n")
@@ -225,7 +312,7 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
 
 
     #FILTER TABLE CREATED
-    cutoff = np.array(cutoff_table)
+    cutoff_cov = np.array( [v.kmer_cutoff for v in strain_objs.values()] )
 
     ##FILTER COUNT TABLE
     count_table_filtered = []
@@ -235,7 +322,7 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     for kmer_count in np.array(count_table).T:
         #print kmer_count
         total_kmers += 1
-        if (kmer_count - cutoff).max() >= 0:
+        if (kmer_count - cutoff_cov).max() >= 0:
             count_table_filtered.append(kmer_count.clip(0,1))
             kept_kmers += 1
 
@@ -248,15 +335,16 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     strain_keys = strain_objs.keys()
 
 
-    #DETERMINE RELATIONSHIPS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    output_histo(strain_objs)
 
+    #DETERMINE RELATIONSHIPS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     similarity_dict = collections.OrderedDict()
     for i in range(len(count_table_filtered)):
         similarity_dict.update({strain_keys[i] : collections.OrderedDict()})
         sum_1 = np.sum(count_table_filtered[i])  #sum of kmers strain 1
         for j in range(i+1, len(count_table_filtered)):
              sum_2 = np.sum(count_table_filtered[j]) #sum of kmers strain 2
-             intersection = sum( (count_table_filtered[i] + count_table_filtered[j]) == 2)
+             intersection = sum( (count_table_filtered[i] + count_table_filtered[j]) == 2 )
              total_kmers =  sum( (count_table_filtered[i] + count_table_filtered[j]) > 0 )
              smallest = sum_1
              if sum_2 < smallest:
@@ -313,7 +401,8 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
             sys.stdout.write("ARDB_CODE:\t{0}\n\tKMER_COUNT:\t{1}\n\tARDB_INFO:\t{2}\n".format(
                 k, ardb_results[strain][k], _obj.get_ardb_info(k)))
     sys.stdout.write("[ARDB INFORMATION END]\n")
-
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if __name__ == "__main__":
     main()

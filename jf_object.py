@@ -98,7 +98,7 @@ class jf_object:
             freq, count = [int(i) for i in v.split(" ")]
             if freq in _histo:
                 _histo[freq] += count
-            else: #greater than 300
+            else:
                 _histo.update({freq : count })
         return _histo
 
