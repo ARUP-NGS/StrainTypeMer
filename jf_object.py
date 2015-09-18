@@ -7,19 +7,61 @@ import numpy as np
 import os, os.path
 from collections import OrderedDict
 
+
+def prime_ardb():
+    """
+    This sets up the ARDB information so the annotations can occur
+
+    :return: _d dictionary with the ARDB name and a ARDB_object
+    """
+    ardb_stats = os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'ARDB_stats.txt' )
+    ardb_info =  os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'class2info.tab' )
+
+    if os.path.isfile(ardb_stats)is False:
+            sys.stderr.write("ARDB stats file could not be found\n")
+            sys.exit("2")
+
+    if os.path.isfile(ardb_info)is False:
+            sys.stderr.write("ARDB info file could not be found\n")
+            sys.exit("2")
+
+    _d = {}
+    for line in open(ardb_stats):
+        if line[0] != "#":
+            l = line.strip().split("\t")
+            _d.update({l[0]: ardb_object(l[0],l[1],l[2],l[3],l[4],l[5],l[6], )})
+
+    for line in open(ardb_info):
+        name, info = line.strip().split("\t")
+        _d[name].set_info(info)
+    return _d
+
+
+class ardb_object:
+    """
+    contains basic information for a ARDB class
+    """
+    def __init__(self, name, min_length, max_length, median_length, avg_length, kmers_for_mean_length, num_of_sequences):
+        self.name = name
+        self.min_length = int(min_length)
+        self.max_length = int(max_length)
+        self.median_length = int(median_length)
+        self.avg_length = float(avg_length)
+        self.kmers_for_mean_length = int(kmers_for_mean_length)
+        self.num_of_sequences = int(num_of_sequences)
+        self.info = ""
+
+    def set_info(self, info):
+        self.info = info
+
+
 class jf_object:
     """
     Contains information about the jellyfish db for a single strain
     """
-    kmer_cutoff = 0
-    #jellyfish_path = ""# = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
-    #ardb_dir = "" # "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
-    #ardb_info = ""
+    #kmer_cutoff = 0
     jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
-    #jellyfish_path = jellyfish_path
-    ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
-    ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
-
+    ardb_info = prime_ardb()
 
     def __init__(self, name, path):
         """
@@ -30,9 +72,10 @@ class jf_object:
         :return:
         """
         self.jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
-        self.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
-        self.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
-
+        self.ardb_dir = os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'ARDB_counts' )
+        #self.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
+        #self.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
+        self.ardb_info = jf_object.ardb_info
 
         self.name = name
         self.path = path
@@ -40,7 +83,7 @@ class jf_object:
 
 
 
-        self.ardb_info_parsed = self.__parser_ardb_info()
+        #self.ardb_info_parsed = self.__parser_ardb_info()
         self.get_stats()
         self.histo = self.get_histo()
         self.coverage = self.get_estimate_coverage()
@@ -59,12 +102,10 @@ class jf_object:
         if os.path.isdir(self.ardb_dir) is False:
             sys.stderr.write("ARDB fasta path not set\n")
             sys.exit("2")
-        if os.path.isfile(self.ardb_info)is False:
-            sys.stderr.write("ARDB info path not set\n")
-            sys.exit("2")
 
-    def __parser_ardb_info(self):
-         return {line.split("\t")[0]: line.split("\t")[1].strip() for line in open(self.ardb_info,"r")}
+
+    # def __parser_ardb_info(self):
+    #      return {line.split("\t")[0]: line.split("\t")[1].strip() for line in open(self.ardb_info,"r")}
 
     def get_stats(self):
         op = subprocess.Popen([self.jellyfish_path, "stats", self.path],
@@ -141,17 +182,13 @@ class jf_object:
     def get_kmer_count(self, jellyfish_obj, break_point):
         counter = 0
         _arr = []
-
         #add extra info
         ardb = self.compare_to_ardb()
 
-
         for i in open(jellyfish_obj, "r"):
-            #print i
             mer, count = i.strip().split("\t")
             mer = jellyfish.MerDNA(mer)
             mer.canonicalize()
-            #print mer, count, self.qf[mer]
             _arr.append(self.qf[mer])
             counter += 1
             if break_point is not None and counter >= break_point:
@@ -162,16 +199,16 @@ class jf_object:
         _dict = {}
         for _file in os.listdir(self.ardb_dir):
             gene = _file.split(".")[0]
-            for i in open(self.ardb_dir + _file, "r"):
+            for i in open(os.path.join(self.ardb_dir, _file), "r"):
                 mer, count = i.strip().split("\t")
                 mer = jellyfish.MerDNA(mer)
                 mer.canonicalize()
-                if  self.qf[mer] != 0:
+                if self.qf[mer] != 0:
                     if gene in _dict:
                         _dict[gene] += 1
                     else:
                         _dict.update({gene:1})
         return _dict
 
-    def get_ardb_info(self, k):
-        return self.ardb_info_parsed[k]
+    #def get_ardb_info(self, k):
+    #    return self.ardb_info_parsed[k]

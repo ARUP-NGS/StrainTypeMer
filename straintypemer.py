@@ -22,6 +22,7 @@ import string
 import random
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 ## CONFIGURATION INFORMATION ###########################################################################################
@@ -73,7 +74,7 @@ def produce_histograms(jf_objects, ylim=350000, xlim=80):
     :return: None writes out multiple pdfs with histograms for each strain
     """
     jf_chunks = chuck_list(jf_objects)
-    plot_count = 1
+    pdf = PdfPages('histograms.pdf')
     for chunk in jf_chunks:
         fig, ax = plt.subplots(len(chunk), sharex=True, sharey=True,)
         fig.set_size_inches(11, 8.5)
@@ -120,10 +121,80 @@ def produce_histograms(jf_objects, ylim=350000, xlim=80):
         plt.xticks(_xticks, fontsize=9)
         plt.yticks(np.arange(0, ylim + 1, 50000), np.arange(0, ylim + 1, 50000) / 100, )
 
-        plt.savefig("histo_{0}.pdf".format(plot_count), transparent=True)
-        plot_count += 1
+        pdf.savefig(transparent=True)
         plt.close()
+    pdf.close()
     return
+
+
+def output_ardb_information(strain_objs, ardb_results):
+    ardb_genes_found = {}
+    for strain, ardb_result in ardb_results.iteritems():
+        for ardb_gene, kmer_count in ardb_result.iteritems():
+            #but all records in ardb_found
+            if ardb_gene not in ardb_genes_found:
+                for strain in ardb_results.iterkeys():
+                    ardb_genes_found.update({ardb_gene : collections.OrderedDict({ k : 0 for k in ardb_results.iterkeys() })})
+            ardb_genes_found[ardb_gene][strain] = kmer_count
+
+    ardb_info = strain_objs[strain].ardb_info
+    plot_count = 1
+    pdf = PdfPages('ardb_information.pdf')
+    for ardb_gene, results in ardb_genes_found.iteritems():
+        fig, ax = plt.subplots(1, sharex=True, sharey=True,)
+        fig.set_size_inches(11, 8.5)
+        idx = 0
+        plt.ylim(0,ardb_info[ardb_gene].max_length)
+        fig.subplots_adjust(hspace = 3.5, wspace=.05, bottom=.45)
+
+        N = len(strain_objs)
+        width = 0.4
+        ind = np.arange(N)
+        ax.bar([i for i in range(len(results))] , [i for i in results.itervalues()] , width,
+               color='g', linewidth=.5, alpha=.5)
+
+        ax.set_title("{1}".format(ardb_info[ardb_gene].name, ardb_info[ardb_gene].info,
+                                  ardb_info[ardb_gene].num_of_sequences), fontsize=10)
+
+        fig.suptitle("{0} (n={2} genes in ARDB)".format(ardb_info[ardb_gene].name, ardb_info[ardb_gene].info,
+                                          ardb_info[ardb_gene].num_of_sequences), fontsize=15, y=.95)
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.yaxis.set_ticks_position('left')
+        ax.xaxis.set_ticks_position('bottom')
+
+        ax.plot([0, len(strain_objs)], [ardb_info[ardb_gene].min_length, ardb_info[ardb_gene].min_length],
+                "--", color='#C24641' ) ##add threshold line
+        ax.annotate('Smallest gene size in ARDB',
+                          xy=(.3, ardb_info[ardb_gene].min_length),
+                          xytext=(.3, ardb_info[ardb_gene].min_length * 1.1), fontsize=9, color='#C24641',)
+
+        ax.plot([0, len(strain_objs)], [ardb_info[ardb_gene].avg_length, ardb_info[ardb_gene].avg_length],
+                "--", color='b' ) ##add threshold line
+        ax.annotate('Average gene size in ARDB',
+                          xy=(3.3, ardb_info[ardb_gene].avg_length),
+                          xytext=(3.3, ardb_info[ardb_gene].avg_length * .95), fontsize=9, color='b',)
+
+
+        ax.plot([0, len(strain_objs)], [ardb_info[ardb_gene].median_length, ardb_info[ardb_gene].median_length],
+                "--", color='#C24641' ) ##add threshold line
+        ax.annotate('Median gene size in ARDB',
+                          xy=(.3, ardb_info[ardb_gene].median_length),
+                          xytext=(.3, ardb_info[ardb_gene].median_length * .95), fontsize=9, color='#C24641',)
+
+        ax.plot([0, len(strain_objs)], [ardb_info[ardb_gene].max_length, ardb_info[ardb_gene].max_length],
+                "--", color='#C24641' ) ##add threshold line
+        ax.annotate('Max gene size in ARDB',
+                          xy=(.3, ardb_info[ardb_gene].max_length),
+                          xytext=(.3, ardb_info[ardb_gene].max_length * .95), fontsize=9, color='#C24641',)
+
+        plt.xticks(ind+(width/2), [label[0:25] for label in strain_objs.keys()], rotation=270)
+        pdf.savefig(transparent=True)
+        plt.close()
+    pdf.close()
+    return
+
 
 
 def count_kmers(q, merged_jf_obj, this_jf_object, cutoff):
@@ -420,14 +491,8 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     sys.stdout.write(_str)
     sys.stdout.write("[DENOMINATOR TABLE END]\n")
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    #print out ardb
-    sys.stdout.write("[ARDB INFORMATION]\n")
-    for strain, _obj in strain_objs.iteritems():
-        sys.stdout.write("STRAIN_ID:\t{0}\n".format(strain))
-        for k in sorted(ardb_results[strain], key=ardb_results[strain].get, reverse=True) :
-            sys.stdout.write("ARDB_CODE:\t{0}\n\tKMER_COUNT:\t{1}\n\tARDB_INFO:\t{2}\n".format(
-                k, ardb_results[strain][k], _obj.get_ardb_info(k)))
-    sys.stdout.write("[ARDB INFORMATION END]\n")
+
+    output_ardb_information(strain_objs, ardb_results)
     return
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
