@@ -4,12 +4,13 @@ __author__ = 'keith simmon'
 
 """
 This script will take as input jf databases from strains and perform a comparison
-
 The input of strains should be provided should be provided as a comma separated list.
 assume sample name is before underscore
 """
 import jf_object as jfobj
 import numpy as np
+import pylab
+import scipy.cluster.hierarchy as sch
 from numpy import sum
 import math
 import argparse
@@ -23,6 +24,7 @@ import random
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 
 
 ## CONFIGURATION INFORMATION ###########################################################################################
@@ -31,6 +33,148 @@ jfobj.jellyfish_path = jellyfish_path
 jfobj.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
 jfobj.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
 ########################################################################################################################
+def adjust_font_size(matrix_length):
+    """
+    Returns a int with a font size that will fit in a matrix of X length
+    :param matrix_length: the size one edge of the matrix
+    :return: (int) the suggested font size for given matrix size
+    """
+    adjusted_size = 0
+    if  matrix_length < 7:
+        adjusted_size = 25
+    if matrix_length >=7:
+        adjusted_size = 20
+    if matrix_length >=9:
+        adjusted_size = 18
+    if matrix_length > 10:
+        adjusted_size = 14
+    if matrix_length > 12:
+        adjusted_size = 12
+    if matrix_length > 15:
+        adjusted_size = 10
+    if matrix_length > 20:
+        adjusted_size = 8
+    if matrix_length > 25:
+        adjusted_size = 6
+    if matrix_length > 30:
+        adjusted_size = 4
+    if matrix_length > 40:
+        adjusted_size = 3
+    if matrix_length > 50:
+        adjusted_size = 0
+    return adjusted_size
+
+
+
+def generage_matrix(x_labels, y_labels, data, output_prefix, vmin=50):
+    """
+    This function saves a PDF file containing a clustered matrix (nearest neighbor).
+
+    :param x_labels: The labels for the x axis
+    :param y_labels: The labels for the y axis (most of the time same as the x_labels)
+    :param data: The matrix (for kmer typing this should be expressed as percent identity (0-100))
+    :param output_prefix: Prefix for the file_name
+    :param vmin: default is 50, this will autamatically be set to the lowest value for
+    :return: None (writes file out)
+    """
+    D = np.array(data, dtype= 'float')
+
+    #truncate labels
+    x_labels = [lab[:5] for lab in x_labels]
+    y_labels = [lab[:5] for lab in y_labels]
+
+    fig = pylab.figure()
+    fig.set_size_inches(11, 8.5)
+
+    # Compute and plot first dendrogram.
+    ax1 = fig.add_axes([0.058,0.1,0.15,0.6], frame_on=False, )
+    Y = sch.linkage(D, method='weighted')
+    Z1 = sch.dendrogram(Y, orientation='right', labels=y_labels, color_threshold=0, color_list=['k'] )
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+
+    # Compute and plot second dendrogram.
+    ax2 = fig.add_axes([0.26,0.75,0.6,0.2], frame_on=False)
+    Y = sch.linkage(D, method='weighted', )
+    Z2 = sch.dendrogram(Y, labels=x_labels, count_sort=False, color_threshold=0, color_list=['k'])
+    ax2.set_xticks([])
+    ax2.set_yticks([])
+
+    # Plot distance matrix.
+    axmatrix = fig.add_axes([0.26,0.1,0.6,0.6], frame_on=False)
+    idx1 = Z1['leaves'] #returns clustered ordered lables
+    idx2 = Z2['leaves']
+
+    D = D[idx1,:]
+    D = D[:,idx2]
+
+    #see if the minumum is too high
+    if np.min(D) < vmin:
+        vmin = np.min(D)
+
+    im = axmatrix.matshow(D, aspect='auto', origin='lower', cmap=pylab.cm.RdYlGn,
+                         interpolation='nearest',vmin=vmin, vmax=100,)
+
+    # minor hacking to create the minor ticks, this is need to overlay the grid
+    # probably a little bit of over kill but I think it better shows each grids as a distinct observartion
+    locs = np.arange(len(x_labels))
+    for axis in [axmatrix.xaxis, axmatrix.yaxis]:
+        axis.set_ticks(locs + 0.5, minor=True)
+        axis.set(ticks=locs, ticklabels=x_labels)
+
+    #modifiy x ticks and labels
+    axmatrix.set_xticks(range(len(x_labels)))
+    axmatrix.set_xticklabels([x_labels[i].replace("_"," ") for i in idx1], minor=False)
+    axmatrix.xaxis.set_label_position("top")
+    pylab.xticks(rotation=-90, fontsize=8,)
+
+    #make sure minor ticks are one
+    axmatrix.tick_params(axis='both', which='minor', right='on', top='on', bottom='on', color="w")
+
+    #turn of the major ticks
+    axmatrix.tick_params(axis='both', which='major', right='off', top='off', bottom='off', left='off')
+
+    #modify the y tick and labels
+    axmatrix.set_yticks(range(len(y_labels)))
+    axmatrix.set_yticklabels([y_labels[i].replace("_"," ") for i in idx2], minor=False)
+    pylab.yticks(fontsize=8)
+
+    #~~~ Add annotations to each cell
+    font_size = adjust_font_size(len(data))
+    for x in xrange(len(x_labels)):
+        for y in xrange(len(y_labels)):
+            val = str(D[x][y]) #current value / square to annotate
+
+            #modifiy formating to make sure value fits in square
+            if val == '100.0':
+                val = '100'
+            else:
+                val = "{:.1f}".format(D[x][y])
+
+            #use white font color if value is greater than 90
+            _color = 'k'
+            if float(D[x][y]) > 92.0:
+                _color = 'w'
+            # annotate this mother
+            axmatrix.annotate(val, xy=(y, x), horizontalalignment='center', verticalalignment='center',
+                              fontsize=font_size, color=_color )
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    #color scale bar
+    axcolor = fig.add_axes([0.88,0.1,0.02,0.6], frame_on=False)
+    pylab.colorbar(im, cax=axcolor)
+
+    #make a grid on the minor axis
+    axmatrix.grid(True, which='minor', linestyle='-', color="w", linewidth=.5)
+
+    #filename
+    if output_prefix != "":
+        pdf = "{0}_{1}".format(output_prefix,'matrix.pdf')
+    else:
+        pdf = 'matrix.pdf'
+
+    fig.savefig(pdf)
+    return
 
 def chuck_list(_OrderedDict, chunk_size=5):
     """
@@ -63,7 +207,7 @@ def generate_histo_values(jf_obj):
             histo[150] += v
     return histo.keys(), histo.values()
 
-def produce_histograms(jf_objects, ylim=350000, xlim=80):
+def produce_histograms(jf_objects, output_prefix, ylim=350000, xlim=150):
     """
     This will take the list of jellyfish objects (i.e. strains) and create a histogram of the kmers counts
 
@@ -73,8 +217,13 @@ def produce_histograms(jf_objects, ylim=350000, xlim=80):
     :param ylim: the highest value on the y axis
     :return: None writes out multiple pdfs with histograms for each strain
     """
-    jf_chunks = chuck_list(jf_objects)
-    pdf = PdfPages('histograms.pdf')
+    jf_chunks = chuck_list(jf_objects, )
+    if output_prefix != "":
+        pdf = PdfPages("{0}_{1}".format(output_prefix,'histograms.pdf'))
+    else:
+        pdf = PdfPages('histograms.pdf')
+
+
     for chunk in jf_chunks:
         fig, ax = plt.subplots(len(chunk), sharex=True, sharey=True,)
         fig.set_size_inches(11, 8.5)
@@ -83,6 +232,12 @@ def produce_histograms(jf_objects, ylim=350000, xlim=80):
         plt.ylim(0,ylim)
 
         fig.subplots_adjust(hspace = .3, wspace=.001)
+
+
+        try:
+            len(ax)
+        except:
+            ax = [ax]
 
         for name, strain in chunk:
             freq, count = generate_histo_values(strain)
@@ -98,7 +253,7 @@ def produce_histograms(jf_objects, ylim=350000, xlim=80):
             ax[idx].plot([strain.kmer_cutoff, strain.kmer_cutoff], [0, ylim], "--", color='#C24641' ) ##add threshold line
             ax[idx].annotate('mers counted <{0} excluded'.format(strain.kmer_cutoff),
                              xy=(strain.kmer_cutoff, ylim * .95),
-                             xytext=(strain.kmer_cutoff + .4, ylim * .95), fontsize=7, color='#C24641', rotation=90)
+                             xytext=(strain.kmer_cutoff + .4, ylim * .95), fontsize=6, color='#C24641', rotation=90)
             ax[idx].add_patch(Rectangle((0, 0), strain.kmer_cutoff, ylim, alpha=.5, facecolor='#C24641', linewidth=0))
 
             #estimated coverage
@@ -109,10 +264,9 @@ def produce_histograms(jf_objects, ylim=350000, xlim=80):
             #estimate genome size
             ax[idx].annotate('Estimated genome size\n{:,} bp'.format(strain.estimate_genome_size(strain.kmer_cutoff)),
                              xy=(xlim * .90, ylim * .80),
-                             xytext=(xlim * .90 , ylim * .80), fontsize=8, color='#483C32', horizontalalignment='right')
+                             xytext=(xlim * .90 , ylim * .60), fontsize=8, color='#483C32', horizontalalignment='right')
             idx += 1
             #~~~~~~~~
-
         ax[len(chunk) / 2].set_ylabel("kmers with a given count (x100)", fontsize=12)
         ax[len(chunk) - 1].set_xlabel("kmer frequency", fontsize=12)
 
@@ -127,7 +281,15 @@ def produce_histograms(jf_objects, ylim=350000, xlim=80):
     return
 
 
-def output_ardb_information(strain_objs, ardb_results):
+def output_ardb_information(strain_objs, ardb_results, output_prefix):
+    """
+    Return multipage PDF with information regarding the presence of genes in the ARDB database.
+
+    :param strain_objs: ordered dictionary with strain objects {strain_name : strain_obj}
+    :param ardb_results: the ardb_results
+    :param output_prefix: prefix to append to the file name
+    :return: None
+    """
     ardb_genes_found = {}
     for strain, ardb_result in ardb_results.iteritems():
         for ardb_gene, kmer_count in ardb_result.iteritems():
@@ -139,7 +301,13 @@ def output_ardb_information(strain_objs, ardb_results):
 
     ardb_info = strain_objs[strain].ardb_info
     plot_count = 1
-    pdf = PdfPages('ardb_information.pdf')
+
+    if output_prefix != "":
+        pdf = PdfPages("{0}_{1}".format(output_prefix,'ardb_information.pdf'))
+    else:
+        pdf = PdfPages('ardb_information.pdf')
+
+
     for ardb_gene, results in ardb_genes_found.iteritems():
         fig, ax = plt.subplots(1, sharex=True, sharey=True,)
         fig.set_size_inches(11, 8.5)
@@ -238,6 +406,19 @@ def main():
                         help="This will prevent the output of the PDF files containing the histograms",
                         default=True, action="store_false")
 
+    parser.add_argument("--do_not_output_matrix",
+                        help="This will prevent the output of the PDF files containing the matrix",
+                        default=True, action="store_false")
+
+    parser.add_argument("--do_not_output_ardb",
+                        help="This will prevent the output of the PDF files containing the ardb",
+                        default=True, action="store_false")
+    parser.add_argument("--no_pdfs",
+                        help="Output will only goto stdout", default=False, action="store_true"
+                        )
+
+    parser.add_argument("--output_prefix", help="appends a prefix to the output files", default="")
+
     parser.add_argument('jf_files', nargs='+', help='jellyfish files for each strain')
 
     args = parser.parse_args()
@@ -248,12 +429,38 @@ def main():
     jf_files = args.jf_files
     kmer_reference = args.kmer_reference
     output_histogram = args.do_not_output_histograms
+    output_matrix = args.do_not_output_matrix
+    output_ardb = args.do_not_output_ardb
+    output_prefix= args.output_prefix
+
+    if args.no_pdfs:
+        output_histogram, output_matrix, output_ardb = False, False, False
+
+
+
 
     compare_strains(jf_files=jf_files, no_kmer_filtering=no_kmer_filtering, cutoff=cutoff, cpus=cpus,
-                    coverage_cutoff=coverage_cutoff,kmer_reference=kmer_reference, output_histogram=output_histogram)
-    return
+                    coverage_cutoff=coverage_cutoff,kmer_reference=kmer_reference, output_histogram=output_histogram,
+                    output_matrix=output_matrix, output_ardb=output_ardb, output_prefix=output_prefix)
 
-def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, kmer_reference, output_histogram):
+
+def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, kmer_reference=None,
+                    output_histogram=True, output_matrix=True, output_ardb=True, output_prefix=""):
+    """
+    This in the primary function which compares the strains
+
+    :param jf_files: [list of file paths (str)]  List of the paths of the jf_files to be compared
+    :param no_kmer_filtering: [Boolean] Do not filter out kmers (bad idea)
+    :param cutoff: [int] number of kmers to compare (None = all)
+    :param cpus: [int] number of processors to utilize
+    :param coverage_cutoff: [int] User overide of automated cutoff filter based on estimated sequence coverage (not recommended)
+    :param kmer_reference: [file path] Instead of merging strains a user supplied list of kmers is used to determine relationships
+    :param output_histogram: [boolean] produce a PDF of the coverage histograms
+    :param output_matrix: [boolean] produce a PDF of the matrix
+    :param output_ardb: [boolean] produce a PDF of the ardb info
+    :param output_prefix: [str] Prefix to append to PDF filenames
+    :return: None
+    """
     ####################################################################################################################
     # CHECK ARGUMENTS AND ATTRIBUTES
     ####################################################################################################################
@@ -309,7 +516,6 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     else:
         merged_jf = kmer_reference
-
 
 
     ########################################################################################################################
@@ -430,11 +636,6 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     count_table_filtered = np.array(count_table_filtered).T #column become row and rows become columns.
     strain_keys = strain_objs.keys()
 
-
-    # WRITE OUT HISTOGRAMS
-    if output_histogram:
-        produce_histograms(strain_objs)
-
     #DETERMINE RELATIONSHIPS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     similarity_dict = collections.OrderedDict()
     for i in range(len(count_table_filtered)):
@@ -458,22 +659,33 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
                                                           )
                                                     })
 
-    #PRINT SIMILARITY TABlE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    #PRINT SIMILARITY TABlE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     sys.stdout.write("[SIMILARITY TABLE]\n")
     delimeter = ","
     _str = delimeter + delimeter.join(strain_keys) + "\n"
+    matrix_data = []
     for i in range(len(strain_keys)):
         _str += strain_keys[i] + delimeter
+
+        matrix_data.append([])
         for j in range(len(strain_keys)):
             if i == j:
+                matrix_data[i].append(100)
                 _str +=  "100" + delimeter
             elif i < j:
+                matrix_data[i].append(similarity_dict[strain_keys[i]][strain_keys[j]][0])
                 _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][0], delimeter)
             elif i > j:
+                matrix_data[i].append(similarity_dict[strain_keys[j]][strain_keys[i]][1])
                 _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][1], delimeter)
         _str  = _str[:-1] + "\n"
     sys.stdout.write(_str)
     sys.stdout.write("[SIMILARITY TABLE END]\n")
+
+
+
+
     #ADD DENOMINATOR TO OUTPUT
     sys.stdout.write("\n\n")
     sys.stdout.write("[DENOMINATOR TABLE]\n")
@@ -492,7 +704,15 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     sys.stdout.write("[DENOMINATOR TABLE END]\n")
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    output_ardb_information(strain_objs, ardb_results)
+    #write out Pdfs
+    if output_histogram:
+        produce_histograms(strain_objs, output_prefix)
+
+    if output_matrix:
+        generage_matrix(strain_keys, strain_keys, matrix_data, output_prefix)
+
+    if output_ardb:
+        output_ardb_information(strain_objs, ardb_results, output_prefix)
     return
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
