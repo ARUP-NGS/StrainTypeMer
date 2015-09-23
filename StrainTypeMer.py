@@ -33,6 +33,7 @@ jfobj.jellyfish_path = jellyfish_path
 jfobj.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
 jfobj.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
 ########################################################################################################################
+
 def adjust_font_size(matrix_length):
     """
     Returns a int with a font size that will fit in a matrix of X length
@@ -153,13 +154,12 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, vmin=50):
 
             #use white font color if value is greater than 90
             _color = 'k'
-            if float(D[x][y]) > 92.0:
+            if float(D[x][y]) > 95.0:
                 _color = 'w'
             # annotate this mother
             axmatrix.annotate(val, xy=(y, x), horizontalalignment='center', verticalalignment='center',
                               fontsize=font_size, color=_color )
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~
-
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #color scale bar
     axcolor = fig.add_axes([0.88,0.1,0.02,0.6], frame_on=False)
     pylab.colorbar(im, cax=axcolor)
@@ -205,9 +205,9 @@ def generate_histo_values(jf_obj):
             histo[k] += v
         elif k > 150:
             histo[150] += v
-    return histo.keys(), histo.values()
+    return histo.keys(), histo.values(), max(histo.values()[3:-2])
 
-def produce_histograms(jf_objects, output_prefix, ylim=350000, xlim=150):
+def produce_histograms(jf_objects, output_prefix, xlim=150):
     """
     This will take the list of jellyfish objects (i.e. strains) and create a histogram of the kmers counts
 
@@ -222,6 +222,15 @@ def produce_histograms(jf_objects, output_prefix, ylim=350000, xlim=150):
         pdf = PdfPages("{0}_{1}".format(output_prefix,'histograms.pdf'))
     else:
         pdf = PdfPages('histograms.pdf')
+
+    ylim = 0
+    for i in jf_objects.itervalues():
+        freq, count, _max = generate_histo_values(i)
+        if _max > ylim:
+            ylim = _max
+
+    ylim = int(float(ylim) * 1.5)
+
 
 
     for chunk in jf_chunks:
@@ -240,7 +249,7 @@ def produce_histograms(jf_objects, output_prefix, ylim=350000, xlim=150):
             ax = [ax]
 
         for name, strain in chunk:
-            freq, count = generate_histo_values(strain)
+            freq, count, _max = generate_histo_values(strain)
             width = 0.8 # the width of the bars
             ax[idx].bar(freq, count, width, color='g', linewidth=.5)
             ax[idx].set_title(name, fontsize=13)
@@ -250,7 +259,7 @@ def produce_histograms(jf_objects, output_prefix, ylim=350000, xlim=150):
             ax[idx].xaxis.set_ticks_position('bottom')
 
             #cutoff
-            ax[idx].plot([strain.kmer_cutoff, strain.kmer_cutoff], [0, ylim], "--", color='#C24641' ) ##add threshold line
+            ax[idx].plot([strain.kmer_cutoff, strain.kmer_cutoff], [0, ylim], "--", color='#C24641' )#add threshold line
             ax[idx].annotate('mers counted <{0} excluded'.format(strain.kmer_cutoff),
                              xy=(strain.kmer_cutoff, ylim * .95),
                              xytext=(strain.kmer_cutoff + .4, ylim * .95), fontsize=6, color='#C24641', rotation=90)
@@ -267,13 +276,13 @@ def produce_histograms(jf_objects, output_prefix, ylim=350000, xlim=150):
                              xytext=(xlim * .90 , ylim * .60), fontsize=8, color='#483C32', horizontalalignment='right')
             idx += 1
             #~~~~~~~~
-        ax[len(chunk) / 2].set_ylabel("kmers with a given count (x100)", fontsize=12)
+        ax[len(chunk) / 2].set_ylabel("kmers with a given count (x10)", fontsize=12)
         ax[len(chunk) - 1].set_xlabel("kmer frequency", fontsize=12)
 
         _xticks = np.arange(0, xlim + 1, 5)
         _xticks[0] = 2
         plt.xticks(_xticks, fontsize=9)
-        plt.yticks(np.arange(0, ylim + 1, 50000), np.arange(0, ylim + 1, 50000) / 100, )
+        plt.yticks(np.arange(0, ylim + 1, 5000), np.arange(0, ylim + 1, 5000) / 10, )
 
         pdf.savefig(transparent=True)
         plt.close()
@@ -296,7 +305,8 @@ def output_ardb_information(strain_objs, ardb_results, output_prefix):
             #but all records in ardb_found
             if ardb_gene not in ardb_genes_found:
                 for strain in ardb_results.iterkeys():
-                    ardb_genes_found.update({ardb_gene : collections.OrderedDict({ k : 0 for k in ardb_results.iterkeys() })})
+                    ardb_genes_found.update({ardb_gene :
+                                                 collections.OrderedDict({ k : 0 for k in ardb_results.iterkeys()})})
             ardb_genes_found[ardb_gene][strain] = kmer_count
 
     ardb_info = strain_objs[strain].ardb_info
@@ -453,8 +463,10 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     :param no_kmer_filtering: [Boolean] Do not filter out kmers (bad idea)
     :param cutoff: [int] number of kmers to compare (None = all)
     :param cpus: [int] number of processors to utilize
-    :param coverage_cutoff: [int] User overide of automated cutoff filter based on estimated sequence coverage (not recommended)
-    :param kmer_reference: [file path] Instead of merging strains a user supplied list of kmers is used to determine relationships
+    :param coverage_cutoff: [int] User overide of automated cutoff filter based on estimated sequence coverage
+                            (not recommended)
+    :param kmer_reference: [file path] Instead of merging strains a user supplied list of kmers is used to
+    \                       determine relationships
     :param output_histogram: [boolean] produce a PDF of the coverage histograms
     :param output_matrix: [boolean] produce a PDF of the matrix
     :param output_ardb: [boolean] produce a PDF of the ardb info
@@ -518,9 +530,9 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
         merged_jf = kmer_reference
 
 
-    ########################################################################################################################
+    ####################################################################################################################
     #START THE WORK
-    ########################################################################################################################
+    ####################################################################################################################
     ardb_results = {}
     count_table = [[] for i in range(len(strain_objs)) ]
     counter = 0
@@ -585,8 +597,6 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
             sys.stdout.write("Strain: {:s}\t Coverage Estimate: {:.1f}\n".format(k, v.coverage))
             #cutoff_table.append(0)
             v.set_cutoff(0)
-
-
     else:
         for k, v in strain_objs.iteritems():
             sys.stdout.write("Strain: {:s}\t Coverage Estimate: {:.1f}\n".format(k, v.coverage))
@@ -650,14 +660,10 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
                  smallest = sum_2
              #print sum_1, sum_2, total_kmers, intersection, smallest
              #print intersection, total_kmers
-             similarity_dict[strain_keys[i]].update({
-                                                     strain_keys[j] :
-                                                         (float(intersection) / total_kmers * 100,
-                                                          float(intersection) / total_kmers * 100,
-                                                          total_kmers,
-                                                          smallest,
-                                                          )
-                                                    })
+             similarity_dict[strain_keys[i]].update({strain_keys[j] :
+                                                     (float(intersection) / total_kmers * 100,
+                                                     float(intersection) / total_kmers * 100,
+                                                     total_kmers, smallest)})
 
 
     #PRINT SIMILARITY TABlE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -682,8 +688,6 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
         _str  = _str[:-1] + "\n"
     sys.stdout.write(_str)
     sys.stdout.write("[SIMILARITY TABLE END]\n")
-
-
 
 
     #ADD DENOMINATOR TO OUTPUT

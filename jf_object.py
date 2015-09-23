@@ -89,7 +89,7 @@ class jf_object:
         self.coverage = self.get_estimate_coverage()
         self.__check_resources()
         self.shared_count = None
-
+        self.kmer_cutoff = None
 
 
         #self.percentage_of_kmers()
@@ -147,12 +147,16 @@ class jf_object:
 
     def get_estimate_coverage(self):
         """Estimates the coverage for kmers count > 3 times"""
-        try:
-            #sum of kmers count / the kmers (distinict) count
-            return np.sum([float(i) * self.histo[i] for i in self.histo]) / float(np.sum(self.histo.values()[3:]))
-        except:
-            return 0
 
+        try:
+            if np.sum([float(i) * self.histo[i] for i in self.histo if i >= 3]) == 0 or \
+                            float(np.sum(self.histo.values()[3:])) == 0:
+                _cov = 1
+            else:
+                _cov = np.sum([float(i) * self.histo[i] for i in self.histo if i >= 3]) / float(np.sum(self.histo.values()[3:]))
+        except:
+            _cov = 1
+        return _cov
 
     def estimate_genome_size(self, coverage_cutoff):
         """
