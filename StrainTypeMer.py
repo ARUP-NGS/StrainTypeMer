@@ -8,6 +8,8 @@ The input of strains should be provided should be provided as a comma separated 
 assume sample name is before underscore
 """
 import jf_object as jfobj
+import matplotlib
+matplotlib.use("Agg")
 import numpy as np
 import pylab
 import scipy.cluster.hierarchy as sch
@@ -21,12 +23,12 @@ import collections
 from multiprocessing import Process, Queue
 import string
 import random
+#import matplotlib
+#matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
-
-
 ## CONFIGURATION INFORMATION ###########################################################################################
 jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
 jfobj.jellyfish_path = jellyfish_path
@@ -165,7 +167,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, vmin=50):
     pylab.colorbar(im, cax=axcolor)
 
     #make a grid on the minor axis
-    axmatrix.grid(True, which='minor', linestyle='-', color="w", linewidth=.5)
+    axmatrix.grid(True, which='minor', linestyle='-', color="w", linewidth=0.5)
 
     #filename
     if output_prefix != "":
@@ -198,23 +200,21 @@ def generate_histo_values(jf_obj):
     :return: frequency count [1-150] and count at each frequency
     """
     histo = collections.OrderedDict()
-    for i in range(1, 151):
+    for i in range(1, 351):
         histo.update({i:0})
     for k, v in  jf_obj.histo.iteritems():
         if k in histo:
             histo[k] += v
-        elif k > 150:
-            histo[150] += v
-    return histo.keys(), histo.values(), max(histo.values()[3:-2])
+        elif k > 350:
+            histo[350] += v
+    return histo.keys(), histo.values(), max(histo.values()[3:-2]) * 1.5
 
-def produce_histograms(jf_objects, output_prefix, xlim=150):
+def produce_histograms(jf_objects, output_prefix):
     """
     This will take the list of jellyfish objects (i.e. strains) and create a histogram of the kmers counts
 
     :param strain_names: [list of strain names]
     :param jf_objects: [list of jf objects]
-    :param xlim: the highest value on the x axis
-    :param ylim: the highest value on the y axis
     :return: None writes out multiple pdfs with histograms for each strain
     """
     jf_chunks = chuck_list(jf_objects, )
@@ -224,65 +224,66 @@ def produce_histograms(jf_objects, output_prefix, xlim=150):
         pdf = PdfPages('histograms.pdf')
 
     ylim = 0
-    for i in jf_objects.itervalues():
-        freq, count, _max = generate_histo_values(i)
-        if _max > ylim:
-            ylim = _max
-
-    ylim = int(float(ylim) * 1.5)
-
-
-
+    #plt.use("Agg")
     for chunk in jf_chunks:
-        fig, ax = plt.subplots(len(chunk), sharex=True, sharey=True,)
+
+        fig = plt.figure()
         fig.set_size_inches(11, 8.5)
+
         idx = 0
-        plt.xlim(2,xlim)
-        plt.ylim(0,ylim)
 
-        fig.subplots_adjust(hspace = .3, wspace=.001)
-
-
-        try:
-            len(ax)
-        except:
-            ax = [ax]
-
+        plt.subplots_adjust(hspace = .4, wspace=.001)
+        this_plot = 1
         for name, strain in chunk:
-            freq, count, _max = generate_histo_values(strain)
+            ax = fig.add_subplot(5,1,this_plot)
+
+            freq, count, ylim = generate_histo_values(strain)
+            xlim = strain.coverage * 2
             width = 0.8 # the width of the bars
-            ax[idx].bar(freq, count, width, color='g', linewidth=.5)
-            ax[idx].set_title(name, fontsize=13)
-            ax[idx].spines['top'].set_visible(False)
-            ax[idx].spines['right'].set_visible(False)
-            ax[idx].yaxis.set_ticks_position('left')
-            ax[idx].xaxis.set_ticks_position('bottom')
 
+            ax.set_title(name, fontsize=13)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.yaxis.set_ticks_position('left')
+            ax.xaxis.set_ticks_position('bottom')
+
+            ax.bar(freq, count, width, color='g', linewidth=.5,)
+
+            this_plot += 1
+
+            ax.set_xlim(2, xlim)
+            ax.set_ylim(0, ylim)
             #cutoff
-            ax[idx].plot([strain.kmer_cutoff, strain.kmer_cutoff], [0, ylim], "--", color='#C24641' )#add threshold line
-            ax[idx].annotate('mers counted <{0} excluded'.format(strain.kmer_cutoff),
-                             xy=(strain.kmer_cutoff, ylim * .95),
-                             xytext=(strain.kmer_cutoff + .4, ylim * .95), fontsize=6, color='#C24641', rotation=90)
-            ax[idx].add_patch(Rectangle((0, 0), strain.kmer_cutoff, ylim, alpha=.5, facecolor='#C24641', linewidth=0))
-
-            #estimated coverage
-            ax[idx].plot([strain.coverage, strain.coverage], [0, ylim], "k--") ##add threshold line
-            ax[idx].annotate('{:.1f}x estimated coverage'.format(strain.coverage), xy=(strain.coverage, ylim * .90),
-                             xytext=(strain.coverage + .8, ylim * .90), fontsize=8, color='#483C32')
-
-            #estimate genome size
-            ax[idx].annotate('Estimated genome size\n{:,} bp'.format(strain.estimate_genome_size(strain.kmer_cutoff)),
+            ax.plot([strain.kmer_cutoff, strain.kmer_cutoff], [0, ylim], "--", color='#C24641' )#add threshold line
+            ax.annotate('<{0} excluded'.format(strain.kmer_cutoff),
+                              xy=(strain.kmer_cutoff, ylim * .95),
+                              xytext=(strain.kmer_cutoff + .4, ylim * .95), fontsize=6, color='#C24641', rotation=90)
+            ax.add_patch(Rectangle((0, 0), strain.kmer_cutoff, ylim, alpha=.5, facecolor='#C24641', linewidth=0))
+        #
+        #     #estimated coverage
+            ax.plot([strain.coverage, strain.coverage], [0, ylim], "k--") ##add threshold line
+            ax.annotate('{:.1f}x estimated coverage'.format(strain.coverage), xy=(strain.coverage, ylim * .90),
+                              xytext=(strain.coverage + .8, ylim * .90), fontsize=8, color='#483C32')
+        #
+        #     #estimate genome size
+            ax.annotate('Estimated genome size\n{:,} bp'.format(strain.estimate_genome_size(strain.kmer_cutoff)),
                              xy=(xlim * .90, ylim * .80),
                              xytext=(xlim * .90 , ylim * .60), fontsize=8, color='#483C32', horizontalalignment='right')
-            idx += 1
-            #~~~~~~~~
-        ax[len(chunk) / 2].set_ylabel("kmers with a given count (x10)", fontsize=12)
-        ax[len(chunk) - 1].set_xlabel("kmer frequency", fontsize=12)
+        #
+        #     if this#~~~~~~~~
+            plt.xticks(fontsize=9)
+            plt.yticks(fontsize=9)
+            if this_plot == 4:
+                ax.set_ylabel("kmers with a given count", fontsize=12)
 
-        _xticks = np.arange(0, xlim + 1, 5)
-        _xticks[0] = 2
-        plt.xticks(_xticks, fontsize=9)
-        plt.yticks(np.arange(0, ylim + 1, 5000), np.arange(0, ylim + 1, 5000) / 10, )
+
+        if this_plot < 5:
+            ax.set_ylabel("kmers with a given count", fontsize=12)
+
+        ax.set_xlabel("kmer frequency", fontsize=12)
+
+
+
 
         pdf.savefig(transparent=True)
         plt.close()
@@ -427,7 +428,7 @@ def main():
                         help="Output will only goto stdout", default=False, action="store_true"
                         )
 
-    parser.add_argument("--output_prefix", help="appends a prefix to the output files", default="")
+    parser.add_argument("-o", "--output_prefix", help="appends a prefix to the output files", default="")
 
     parser.add_argument('jf_files', nargs='+', help='jellyfish files for each strain')
 
@@ -700,9 +701,9 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
             if i == j:
                 _str += "{0}{1}".format(np.sum(count_table_filtered[j]), delimeter)
             elif i < j:
-                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][2], delimeter)
+                _str += "{:.0f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][2], delimeter)
             elif i > j:
-                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][3], delimeter)
+                _str += "{:.0f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][3], delimeter)
         _str  = _str[:-1] + "\n"
     sys.stdout.write(_str)
     sys.stdout.write("[DENOMINATOR TABLE END]\n")

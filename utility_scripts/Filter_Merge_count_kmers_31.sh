@@ -45,7 +45,7 @@ ADAPTER="AGATCGGAAGAGC"
 ##SETUP##
 #source /home/ksimmon/.bashrc
 
-preprocessed_dir="${PWD}/${base_file_name}_processed_jellyfish_31_test/"
+preprocessed_dir="${PWD}/${base_file_name}_processed_jellyfish_31/"
 ##cutadapt
 mkdir ${preprocessed_dir}
 log_file="${preprocessed_dir}${base_file_name}.log"
@@ -95,7 +95,7 @@ echo "combining reads"
 ##ADD KRAKEN PREPROCESSING
 kraken_db=" --db /home/ksimmon/reference/strian_typing_resources/kraken_strain_typing/ "
 
-kraken_options=" --threads 6 --fasta-input --preload "
+kraken_options=" --threads 3 --fasta-input --preload "
 
 echo "identifying plasmid and genomic sequences "
 /usr/bin/time -v -o "${log_file_time}_kraken.txt" $kraken ${kraken_db} ${kraken_options} \
@@ -128,12 +128,12 @@ echo "$jellyfish count -m ${3} -L 2 -t 6 -o ${jellyfish_out} -s 4G -C ${file_con
     -s 4G -C ${file_concat_all} >> ${log_file} 2>&1
 
 jellyfish_plasmid_out="${preprocessed_dir}${base_file_name}_plasmid_jellyfish_${3}.jf"
-echo "$jellyfish count -m ${3} -L 2 -t 6 -o ${jellyfish_plasmid_out} -s 4G -C ${plasmid_fasta}"
+#echo "$$f"
 /usr/bin/time -v -o "${log_file_time}_jf_plasmid.txt" $jellyfish count -m ${3} -L 2 -t 10 \
     -o ${jellyfish_plasmid_out} -s 4G -C ${plasmid_fasta} >> ${log_file} 2>&1
 
 jellyfish_genome_out="${preprocessed_dir}${base_file_name}_genome_jellyfish_${3}.jf"
-echo "$jellyfish count - m ${3} -L 2 -t 6 -o ${jellyfish_genome_out} -s 4G -C ${genomic_fasta}"
+echo "$jellyfish count - m ${3} -L 2 -t 3 -o ${jellyfish_genome_out} -s 4G -C ${genomic_fasta}"
 /usr/bin/time -v -o "${log_file_time}_jf_genome.txt" $jellyfish count -m ${3} -L 2 -t 10 \
   -o ${jellyfish_genome_out} -s 4G -C ${genomic_fasta} >> ${log_file} 2>&1
 
