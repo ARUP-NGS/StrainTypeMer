@@ -23,14 +23,12 @@ import collections
 from multiprocessing import Process, Queue
 import string
 import random
-#import matplotlib
-#matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 ## CONFIGURATION INFORMATION ###########################################################################################
-jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
+jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.3/bin/jellyfish"
 jfobj.jellyfish_path = jellyfish_path
 jfobj.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
 jfobj.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
@@ -69,7 +67,7 @@ def adjust_font_size(matrix_length):
 
 
 
-def generage_matrix(x_labels, y_labels, data, output_prefix, vmin=50):
+def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmin=50):
     """
     This function saves a PDF file containing a clustered matrix (nearest neighbor).
 
@@ -83,21 +81,21 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, vmin=50):
     D = np.array(data, dtype= 'float')
 
     #truncate labels
-    x_labels = [lab[:5] for lab in x_labels]
-    y_labels = [lab[:5] for lab in y_labels]
+    #x_labels_trun = [lab[:7] for lab in x_labels]
+    #y_labels_trun = [lab[:7] for lab in y_labels]
 
     fig = pylab.figure()
     fig.set_size_inches(11, 8.5)
 
-    # Compute and plot first dendrogram.
-    ax1 = fig.add_axes([0.058,0.1,0.15,0.6], frame_on=False, )
+    # Compute and plot first dendrogram. [LEFT]
+    ax1 = fig.add_axes([0.058,0.1,0.115,0.6], frame_on=False, )
     Y = sch.linkage(D, method='weighted')
     Z1 = sch.dendrogram(Y, orientation='right', labels=y_labels, color_threshold=0, color_list=['k'] )
     ax1.set_xticks([])
     ax1.set_yticks([])
 
-    # Compute and plot second dendrogram.
-    ax2 = fig.add_axes([0.26,0.75,0.6,0.2], frame_on=False)
+    # Compute and plot second dendrogram. [TOP]
+    ax2 = fig.add_axes([0.26,0.815,0.6,0.1], frame_on=False)
     Y = sch.linkage(D, method='weighted', )
     Z2 = sch.dendrogram(Y, labels=x_labels, count_sort=False, color_threshold=0, color_list=['k'])
     ax2.set_xticks([])
@@ -127,9 +125,12 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, vmin=50):
 
     #modifiy x ticks and labels
     axmatrix.set_xticks(range(len(x_labels)))
-    axmatrix.set_xticklabels([x_labels[i].replace("_"," ") for i in idx1], minor=False)
+    axmatrix.set_xticklabels(["{:s}\n(n={:,} kmers)".format(x_labels[i][:20].replace("_"," "),
+                                    strain_lengths[x_labels[i]]) for i in idx2 ], minor=False, multialignment='center',
+                             linespacing=1)
+
     axmatrix.xaxis.set_label_position("top")
-    pylab.xticks(rotation=-90, fontsize=8,)
+    pylab.xticks(rotation=-90, fontsize=6,)
 
     #make sure minor ticks are one
     axmatrix.tick_params(axis='both', which='minor', right='on', top='on', bottom='on', color="w")
@@ -139,27 +140,43 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, vmin=50):
 
     #modify the y tick and labels
     axmatrix.set_yticks(range(len(y_labels)))
-    axmatrix.set_yticklabels([y_labels[i].replace("_"," ") for i in idx2], minor=False)
-    pylab.yticks(fontsize=8)
+    axmatrix.set_yticklabels( ["{:s}\n(n={:,} kmers)".format(y_labels[i][:20].replace("_"," "),
+                                    strain_lengths[y_labels[i]]) for i in idx1 ], minor=False, multialignment='center',
+                              linespacing=1)
 
+    for i, label in enumerate(axmatrix.xaxis.get_ticklabels()):
+        if i%2 == 0:
+            label.set_color('#5C6161')
+        else:
+            label.set_color("#000000")
+
+    for i, label in enumerate(axmatrix.yaxis.get_ticklabels()):
+        if i%2 == 0:
+            label.set_color('#5C6161')
+        else:
+            label.set_color("#000000")
+
+    pylab.yticks(fontsize=6)
     #~~~ Add annotations to each cell
     font_size = adjust_font_size(len(data))
     for x in xrange(len(x_labels)):
         for y in xrange(len(y_labels)):
-            val = str(D[x][y]) #current value / square to annotate
-
             #modifiy formating to make sure value fits in square
-            if val == '100.0':
+            val = "{:.1f}".format(D[x][y])
+            _color = 'k'
+            if "100" in val:
                 val = '100'
-            else:
-                val = "{:.1f}".format(D[x][y])
+                _color = '#C3C300'
 
             #use white font color if value is greater than 90
-            _color = 'k'
+
             if float(D[x][y]) > 95.0:
                 _color = 'w'
-            # annotate this mother
-            axmatrix.annotate(val, xy=(y, x), horizontalalignment='center', verticalalignment='center',
+
+            if float(D[x][y]) > 99.9:
+                _color = '#C3C300'
+            #annotate this mother
+            axmatrix.annotate(val, xy=(x, y), horizontalalignment='center', verticalalignment='center',
                               fontsize=font_size, color=_color )
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #color scale bar
@@ -178,7 +195,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, vmin=50):
     fig.savefig(pdf)
     return
 
-def chuck_list(_OrderedDict, chunk_size=5):
+def chunk_list(_OrderedDict, chunk_size=5):
     """
     little method that helps to break the number of strains into chunks so that the histograms are printed on a
     reasonably scaled PDF
@@ -217,7 +234,7 @@ def produce_histograms(jf_objects, output_prefix):
     :param jf_objects: [list of jf objects]
     :return: None writes out multiple pdfs with histograms for each strain
     """
-    jf_chunks = chuck_list(jf_objects, )
+    jf_chunks = chunk_list(jf_objects, )
     if output_prefix != "":
         pdf = PdfPages("{0}_{1}".format(output_prefix,'histograms.pdf'))
     else:
@@ -257,7 +274,9 @@ def produce_histograms(jf_objects, output_prefix):
             ax.plot([strain.kmer_cutoff, strain.kmer_cutoff], [0, ylim], "--", color='#C24641' )#add threshold line
             ax.annotate('<{0} excluded'.format(strain.kmer_cutoff),
                               xy=(strain.kmer_cutoff, ylim * .95),
-                              xytext=(strain.kmer_cutoff + .4, ylim * .95), fontsize=6, color='#C24641', rotation=90)
+                              xytext=(strain.kmer_cutoff + .4, ylim * .95),
+                              fontsize=6, color='#C24641', rotation=90)
+
             ax.add_patch(Rectangle((0, 0), strain.kmer_cutoff, ylim, alpha=.5, facecolor='#C24641', linewidth=0))
         #
         #     #estimated coverage
@@ -376,7 +395,7 @@ def output_ardb_information(strain_objs, ardb_results, output_prefix):
 
 
 
-def count_kmers(q, merged_jf_obj, this_jf_object, cutoff):
+def count_kmers(q, merged_jf_obj, this_jf_object, kmer_reference, reverse_kmer_reference,  cutoff):
     """
     This function facilitates the queuing of the jellyfish counting
     Takes a jellyfish object merged from all the strains and calls the gets kmer count for the queried strain
@@ -384,9 +403,14 @@ def count_kmers(q, merged_jf_obj, this_jf_object, cutoff):
     :param merged_jf_obj: merged count of all strains
     :param this_jf_object: strain jf object
     :return: None (puts in queue)    """
-    q.put(this_jf_object.get_kmer_count(merged_jf_obj, cutoff))
+    q.put(this_jf_object.get_kmer_count(merged_jf_obj, kmer_reference, reverse_kmer_reference, cutoff))
     return
 
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
 
 def main():
     """
@@ -410,8 +434,14 @@ def main():
               action="store_true", default=False)
 
     parser.add_argument("-k", "--kmer_reference",
-              help="instead of merging strains use kmer reference set for comparison",
-              type=str, default=None)
+              help="supplement use kmer reference set for comparison (e.g. plasmid, core genome, pan genome kmers)",
+              type=str, default=None, )
+
+    parser.add_argument("-r", "--reverse_kmer_reference",
+              help="Use kmers to create similarity matrix not in supplied reference set (e.g. plasmid, core genome, pan genome kmers)",
+              type=str, default=None, )
+
+
 
     parser.add_argument("--do_not_output_histograms",
                         help="This will prevent the output of the PDF files containing the histograms",
@@ -439,6 +469,8 @@ def main():
     coverage_cutoff = args.coverage_cutoff
     jf_files = args.jf_files
     kmer_reference = args.kmer_reference
+    reverse_kmer_reference = args.reverse_kmer_reference
+
     output_histogram = args.do_not_output_histograms
     output_matrix = args.do_not_output_matrix
     output_ardb = args.do_not_output_ardb
@@ -451,12 +483,14 @@ def main():
 
 
     compare_strains(jf_files=jf_files, no_kmer_filtering=no_kmer_filtering, cutoff=cutoff, cpus=cpus,
-                    coverage_cutoff=coverage_cutoff,kmer_reference=kmer_reference, output_histogram=output_histogram,
+                    coverage_cutoff=coverage_cutoff,kmer_reference=kmer_reference,
+                    reverse_kmer_reference=reverse_kmer_reference,output_histogram=output_histogram,
                     output_matrix=output_matrix, output_ardb=output_ardb, output_prefix=output_prefix)
 
 
 def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, kmer_reference=None,
-                    output_histogram=True, output_matrix=True, output_ardb=True, output_prefix=""):
+                    reverse_kmer_reference=None, output_histogram=True, output_matrix=True, output_ardb=True,
+                    output_prefix=""):
     """
     This in the primary function which compares the strains
 
@@ -466,8 +500,7 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     :param cpus: [int] number of processors to utilize
     :param coverage_cutoff: [int] User overide of automated cutoff filter based on estimated sequence coverage
                             (not recommended)
-    :param kmer_reference: [file path] Instead of merging strains a user supplied list of kmers is used to
-    \                       determine relationships
+    :param kmer_reference: supplement use kmer reference set for comparison (e.g. plasmid, core genome, pan genome kmers)
     :param output_histogram: [boolean] produce a PDF of the coverage histograms
     :param output_matrix: [boolean] produce a PDF of the matrix
     :param output_ardb: [boolean] produce a PDF of the ardb info
@@ -477,9 +510,18 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     ####################################################################################################################
     # CHECK ARGUMENTS AND ATTRIBUTES
     ####################################################################################################################
-    if kmer_reference is not None and os.path.isfile(kmer_reference) is False:
-        sys.stderr.write("kmer reference file does not exist: {0}\n".format(kmer_reference))
-        sys.exit(11)
+    if kmer_reference is not None:
+        #for ref in kmer_reference:
+        if os.path.isfile(kmer_reference) is False:
+            sys.stderr.write("kmer reference file does not exist: {0}\n".format(ref))
+            sys.exit(11)
+
+    if reverse_kmer_reference is not None:
+        #for ref in reverse_kmer_reference:
+        if os.path.isfile(reverse_kmer_reference) is False:
+            sys.stderr.write("reverse kmer reference file does not exist: {0}\n".format(ref))
+            sys.exit(11)
+
 
     NUM_OF_STRAINS = len(jf_files) #calculate the number of samples
     if cpus == None or cpus > NUM_OF_STRAINS:
@@ -504,31 +546,22 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     ####################################################################################################################
     temp_file =  "/tmp/tmp_{0}".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
     jf_temp_file = temp_file + ".jf"
-    dump_temp_file = temp_file + ".txt"
+    #dump_temp_file = temp_file + ".txt"
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  COMPARE STRAINS DIRECTLY
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if kmer_reference is None:
-        try:
-            subprocess.check_call([jellyfish_path, "merge", '-L', "2", "-o", jf_temp_file] + file_paths )
-        except:
-            sys.stderr.write("Error in running jellyfish merge\n")
-            sys.exit(3)
-        # dump kmers out to a file [Technically I should be able to remove this however a jellyfish bug causes the loss
-        # of canonicalization for merged sets ] dumping out to txt file avoids this.
-        try:
-            subprocess.check_call([jellyfish_path, "dump", '-c',  "-t", "-o", dump_temp_file, jf_temp_file] )
-        except:
-            sys.stderr.write("Error in running jellyfish merge\n")
-            sys.exit(4)
 
-        os.remove(jf_temp_file)
-        merged_jf = dump_temp_file
+    try:
+        subprocess.check_call([jellyfish_path, "merge", '-L', "2", "-o", jf_temp_file] + file_paths )
+    except:
+        sys.stderr.write("Error in running jellyfish merge\n")
+        sys.exit(3)
+
+    merged_jf = jf_temp_file
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #  USE USER SUPPLIED KMER LIST  [kmer\tcount]
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    else:
-        merged_jf = kmer_reference
+
 
 
     ####################################################################################################################
@@ -536,6 +569,8 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     ####################################################################################################################
     ardb_results = {}
     count_table = [[] for i in range(len(strain_objs)) ]
+    count_table_kmer_reference = [[] for i in range(len(strain_objs)) ]
+    count_table_reverse_kmer_reference = [[] for i in range(len(strain_objs)) ]
     counter = 0
     attach = count_table.append
 
@@ -549,42 +584,49 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
 
     for cpu in range(cpus):
         _obj = jobs.pop()
-        p = Process(target=count_kmers, args=(q, merged_jf, _obj, cutoff,), name=_obj.name)
+        p = Process(target=count_kmers, args=(q, merged_jf, _obj, kmer_reference, reverse_kmer_reference, cutoff,),
+                    name=_obj.name)
         current_processes.append(p)
 
     #start the jobs for the correct number of cpus
     while len(current_processes) != 0:
         current_processes.pop().start()
 
+
     #keep the queue moving
     while len(jobs) != 0:
-        _name, _arr, ardb = q.get() #PAUSES UNTIL A JOBS RETURN  #AM I WIATING FOR THE FIRST OBJECT
-        ardb_results.update({_name : ardb})
+        _name, _arr, k_arr, r_arr = q.get() #PAUSES UNTIL A JOBS RETURN  #AM I WIATING FOR THE FIRST OBJECT
+        #ardb_results.update({_name : ardb})
         num_of_strains_counted += 1
 
         sys.stderr.write("{0}\tof\t{1}\tstrains processed\n".format(num_of_strains_counted, len(strain_objs)))
 
-
         count_table[strain_objs.keys().index(_name)]=np.array(_arr)
+        count_table_kmer_reference[strain_objs.keys().index(_name)]=np.array(k_arr)
+        count_table_reverse_kmer_reference[strain_objs.keys().index(_name)]=np.array(r_arr)
+
+
         #start next job
-        p = Process(target=count_kmers, args=( q, merged_jf, jobs.pop(), cutoff, ),name=_obj.name)
+        p = Process(target=count_kmers, args=( q, merged_jf, jobs.pop(),
+                                               kmer_reference, reverse_kmer_reference, cutoff, ),name=_obj.name)
         p.start()
     #nothing else to start
-
     #wait until the queue returns 'ALL THE THINGS'
     while num_of_strains_counted != len(strain_objs): ##finished processing
-        _name, _arr, ardb = q.get() #PAUSES UNTIL A JOBS RETURN
-        ardb_results.update({_name : ardb})
+        _name, _arr, k_arr, r_arr = q.get() #PAUSES UNTIL A JOBS RETURN
+        #ardb_results.update({_name : ardb})
         num_of_strains_counted += 1
 
         sys.stderr.write("{0}\tof\t{1}\tstrains processed\n".format(num_of_strains_counted, len(strain_objs)))
         count_table[strain_objs.keys().index(_name)]=np.array(_arr)
+        count_table_kmer_reference[strain_objs.keys().index(_name)]=np.array(k_arr)
+        count_table_reverse_kmer_reference[strain_objs.keys().index(_name)]=np.array(r_arr)
     q.close()
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #cleanup temp files
-    if os.path.isfile(dump_temp_file):
-        os.remove(dump_temp_file)
+    if os.path.isfile(merged_jf):
+        os.remove(merged_jf)
 
 
     sys.stdout.write(" COVERAGE INFORMATION ".center(80, "-") + "\n")
@@ -623,44 +665,99 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
                           v.estimate_genome_size(v.kmer_cutoff), v.kmer_cutoff ))
     sys.stdout.write("".center(80, "-") + "\n\n")
 
-
-    #FILTER TABLE CREATED
+    #FILTER TABLE CREATED ie [3,4,5] cutoff for each strian
     cutoff_cov = np.array( [v.kmer_cutoff for v in strain_objs.values()] )
 
-    ##FILTER COUNT TABLE
-    count_table_filtered = []
-    total_kmers = 0.0
-    kept_kmers = 0.0
 
-    for kmer_count in np.array(count_table).T:
-        #print kmer_count
-        total_kmers += 1
-        if (kmer_count - cutoff_cov).max() >= 0:
-            count_table_filtered.append(kmer_count.clip(0,1))
-            kept_kmers += 1
+    #print len(count_table), len(count_table[i])
+    #~~~~~~~~~~~~~~
+    #subtract coverage value then clip to binary value (0 absent, 1 present)
+    count_table = (np.array(count_table).T - cutoff_cov).clip(0,1)
+    count_table = count_table[~np.all(count_table == 0, axis=1)].T #get rid of kmers not present in all strains #memory footprint
+
+
+
+    #print len(count_table), len(count_table[i])
+
 
     sys.stdout.write(" FILTER INFO ".center(80, "-") + "\n")
-    sys.stdout.write("{:.0f}\tkmers counted (n > 1) in all strains\n".format(total_kmers))
-    sys.stdout.write("{:.0f}\tkmers included in analysis\n".format(kept_kmers))
+    sys.stdout.write(
+        "{:.0f}\tkmers counted (n > 1) in all strains\n".format( len(count_table[i] )))
     sys.stdout.write("".center(80, "-") + "\n\n")
 
-    count_table_filtered = np.array(count_table_filtered).T #column become row and rows become columns.
-    strain_keys = strain_objs.keys()
 
-    #DETERMINE RELATIONSHIPS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if kmer_reference is not None:
+        #print len(count_table_kmer_reference[0])
+        sys.stdout.write("[KMER REFERENCE={0}]\n".format(kmer_reference).center(80, "-"))
+        count_table_kmer_reference = (np.array(count_table_kmer_reference).T - cutoff_cov).clip(0,1)
+        count_table_kmer_reference = count_table_kmer_reference[~np.all(count_table_kmer_reference == 0, axis=1)].T
+        #count_table_kmer_reference = np.array(count_table_kmer_reference).T
+
+
+        #print len(count_table_kmer_reference[0])
+
+        matrix_data_kmer_reference = calculate_matrix(strain_objs, count_table_kmer_reference)
+        sys.stdout.write("[END KMER REFERENCE={0}]\n".format(kmer_reference).center(80, "-"))
+
+        if output_matrix:
+            strain_keys = strain_objs.keys()
+            strain_kmer_counts = {s_key : np.sum(count_table_kmer_reference[i]) for i, s_key in enumerate(strain_keys) }
+            #print strain_kmer_counts
+            generage_matrix(strain_keys, strain_keys, matrix_data_kmer_reference, output_prefix + "_kmer_reference",
+                            strain_kmer_counts)
+
+    if reverse_kmer_reference is not None:
+        sys.stdout.write("[REVERSE KMER REFERENCE={0}]\n".format(reverse_kmer_reference).center(80, "-") )
+        count_table_reverse_kmer_reference = (np.array(count_table_reverse_kmer_reference).T - cutoff_cov).clip(0,1)
+        count_table_reverse_kmer_reference = count_table_reverse_kmer_reference[~np.all(
+            count_table_reverse_kmer_reference == 0, axis=1)].T
+        #count_table_reverse_kmer_reference = np.array(count_table_reverse_kmer_reference).T
+        #print len(count_table_reverse_kmer_reference[0])
+
+        matrix_data_reverse_kmer_reference = calculate_matrix(strain_objs, count_table_reverse_kmer_reference)
+        sys.stdout.write("[END REVERSE KMER REFERENCE={0}]\n".format(reverse_kmer_reference).center(80, "-") )
+
+        if output_matrix:
+            strain_keys = strain_objs.keys()
+            strain_kmer_counts = {s_key : np.sum(count_table_reverse_kmer_reference[i])
+                                  for i, s_key in enumerate(strain_keys) }
+            generage_matrix(strain_keys, strain_keys, matrix_data_reverse_kmer_reference,
+                            output_prefix + "_reverse_kmer_reference", strain_kmer_counts)
+
+    #~~~~~~~~~~~~~~~
+     #column become row and rows become columns.
+    #strain_keys = strain_objs.keys()
+
+    matrix_data = calculate_matrix(strain_objs, count_table)
+    if output_matrix:
+        strain_keys = strain_objs.keys()
+        strain_kmer_counts = {s_key : np.sum(count_table[i]) for i, s_key in enumerate(strain_keys) }
+
+        generage_matrix(strain_keys, strain_keys, matrix_data, output_prefix, strain_kmer_counts)
+
+    #write out Pdfs
+    if output_histogram:
+        produce_histograms(strain_objs, output_prefix)
+
+    return
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+def calculate_matrix(strain_objs, count_table):
     similarity_dict = collections.OrderedDict()
-    for i in range(len(count_table_filtered)):
+    strain_keys = strain_objs.keys()
+    for i in range(len(count_table)):
         similarity_dict.update({strain_keys[i] : collections.OrderedDict()})
-        sum_1 = np.sum(count_table_filtered[i])  #sum of kmers strain 1
-        for j in range(i+1, len(count_table_filtered)):
-             sum_2 = np.sum(count_table_filtered[j]) #sum of kmers strain 2
-             intersection = sum( (count_table_filtered[i] + count_table_filtered[j]) == 2 )
-             total_kmers =  sum( (count_table_filtered[i] + count_table_filtered[j]) > 0 )
+        sum_1 = np.sum(count_table[i])  #sum of kmers strain 1
+        for j in range(i+1, len(count_table)):
+             sum_2 = np.sum(count_table[j]) #sum of kmers strain 2
+             intersection = np.sum( (count_table[i] + count_table[j]) == 2 )
+             total_kmers =  np.sum( (count_table[i] + count_table[j]) > 0 )
              smallest = sum_1
              if sum_2 < smallest:
                  smallest = sum_2
-             #print sum_1, sum_2, total_kmers, intersection, smallest
-             #print intersection, total_kmers
+
              similarity_dict[strain_keys[i]].update({strain_keys[j] :
                                                      (float(intersection) / total_kmers * 100,
                                                      float(intersection) / total_kmers * 100,
@@ -695,11 +792,12 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     sys.stdout.write("\n\n")
     sys.stdout.write("[DENOMINATOR TABLE]\n")
     _str = delimeter + delimeter.join(strain_keys) + "\n"
+
     for i in range(len(strain_keys)):
         _str += strain_keys[i] + delimeter
         for j in range(len(strain_keys)):
             if i == j:
-                _str += "{0}{1}".format(np.sum(count_table_filtered[j]), delimeter)
+                _str += "{0}{1}".format(np.sum(count_table[j]), delimeter)
             elif i < j:
                 _str += "{:.0f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][2], delimeter)
             elif i > j:
@@ -707,20 +805,8 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
         _str  = _str[:-1] + "\n"
     sys.stdout.write(_str)
     sys.stdout.write("[DENOMINATOR TABLE END]\n")
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    #write out Pdfs
-    if output_histogram:
-        produce_histograms(strain_objs, output_prefix)
-
-    if output_matrix:
-        generage_matrix(strain_keys, strain_keys, matrix_data, output_prefix)
-
-    if output_ardb:
-        output_ardb_information(strain_objs, ardb_results, output_prefix)
-    return
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    return matrix_data
 
 if __name__ == "__main__":
     main()
