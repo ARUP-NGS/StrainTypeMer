@@ -91,6 +91,9 @@ class jf_object:
         self.shared_count = None
         self.kmer_cutoff = None
 
+        self.kmer_reference_count = 0
+        self.reverse_kmer_reference_count = 0
+        self.kmer_count = 0
 
         #self.percentage_of_kmers()
 
@@ -182,22 +185,46 @@ class jf_object:
                "Total_kmers\t{0}\n".format(self.total_kmers) + \
                "Max_Count\t{0}\n".format(self.max_count)
 
-
-    def get_kmer_count(self, jellyfish_obj, break_point):
+    def get_kmer_count(self, jellyfish_obj, kmer_reference, reverse_kmer_reference, break_point):
         counter = 0
         _arr = []
-        #add extra info
-        ardb = self.compare_to_ardb()
+        k_arr = None
+        r_arr = None
 
-        for i in open(jellyfish_obj, "r"):
-            mer, count = i.strip().split("\t")
-            mer = jellyfish.MerDNA(mer)
+        self.kmer_reference_count = 0
+        self.reverse_kmer_reference_count = 0
+        self.kmer_count = 0
+
+        if kmer_reference is not None:
+            k_arr = []
+            kmer_reference = jellyfish.QueryMerFile(kmer_reference)
+
+
+        if reverse_kmer_reference is not None:
+            r_arr = []
+            reverse_kmer_reference = jellyfish.QueryMerFile(reverse_kmer_reference)
+
+
+        mer_file = jellyfish.ReadMerFile(jellyfish_obj)
+        for mer, count in mer_file:
             mer.canonicalize()
             _arr.append(self.qf[mer])
+
+            if kmer_reference is not None:
+                if kmer_reference[mer] > 0: # kmer in ref
+                    k_arr.append(self.qf[mer])
+
+            if reverse_kmer_reference is not None:
+                if reverse_kmer_reference[mer] == 0: # kmer not in ref
+                    r_arr.append(self.qf[mer])
+
             counter += 1
             if break_point is not None and counter >= break_point:
                 break
-        return (self.name, _arr, ardb)
+
+        return (self.name, _arr, k_arr, r_arr)
+
+
 
     def compare_to_ardb(self):
         _dict = {}
