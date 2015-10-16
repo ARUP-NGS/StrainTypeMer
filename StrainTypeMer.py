@@ -702,7 +702,6 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
         if output_matrix:
             strain_keys = strain_objs.keys()
             strain_kmer_counts = {s_key : np.sum(count_table_kmer_reference[i]) for i, s_key in enumerate(strain_keys) }
-            #print strain_kmer_counts
             generage_matrix(strain_keys, strain_keys, matrix_data_kmer_reference, output_prefix + "_kmer_reference",
                             strain_kmer_counts)
 
