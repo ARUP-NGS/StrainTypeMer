@@ -8,51 +8,51 @@ import os, os.path
 from collections import OrderedDict
 
 
-def prime_ardb():
-    """
-    This sets up the ARDB information so the annotations can occur
-
-    :return: _d dictionary with the ARDB name and a ARDB_object
-    """
-    ardb_stats = os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'ARDB_stats.txt' )
-    ardb_info =  os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'class2info.tab' )
-
-    if os.path.isfile(ardb_stats)is False:
-            sys.stderr.write("ARDB stats file could not be found\n")
-            sys.exit("2")
-
-    if os.path.isfile(ardb_info)is False:
-            sys.stderr.write("ARDB info file could not be found\n")
-            sys.exit("2")
-
-    _d = {}
-    for line in open(ardb_stats):
-        if line[0] != "#":
-            l = line.strip().split("\t")
-            _d.update({l[0]: ardb_object(l[0],l[1],l[2],l[3],l[4],l[5],l[6], )})
-
-    for line in open(ardb_info):
-        name, info = line.strip().split("\t")
-        _d[name].set_info(info)
-    return _d
-
-
-class ardb_object:
-    """
-    contains basic information for a ARDB class
-    """
-    def __init__(self, name, min_length, max_length, median_length, avg_length, kmers_for_mean_length, num_of_sequences):
-        self.name = name
-        self.min_length = int(min_length)
-        self.max_length = int(max_length)
-        self.median_length = int(median_length)
-        self.avg_length = float(avg_length)
-        self.kmers_for_mean_length = int(kmers_for_mean_length)
-        self.num_of_sequences = int(num_of_sequences)
-        self.info = ""
-
-    def set_info(self, info):
-        self.info = info
+# def prime_ardb():
+#     """
+#     This sets up the ARDB information so the annotations can occur
+#
+#     :return: _d dictionary with the ARDB name and a ARDB_object
+#     """
+#     ardb_stats = os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'ARDB_stats.txt' )
+#     ardb_info =  os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'class2info.tab' )
+#
+#     if os.path.isfile(ardb_stats)is False:
+#             sys.stderr.write("ARDB stats file could not be found\n")
+#             sys.exit("2")
+#
+#     if os.path.isfile(ardb_info)is False:
+#             sys.stderr.write("ARDB info file could not be found\n")
+#             sys.exit("2")
+#
+#     _d = {}
+#     for line in open(ardb_stats):
+#         if line[0] != "#":
+#             l = line.strip().split("\t")
+#             _d.update({l[0]: ardb_object(l[0],l[1],l[2],l[3],l[4],l[5],l[6], )})
+#
+#     for line in open(ardb_info):
+#         name, info = line.strip().split("\t")
+#         _d[name].set_info(info)
+#     return _d
+#
+#
+# class ardb_object:
+#     """
+#     contains basic information for a ARDB class
+#     """
+#     def __init__(self, name, min_length, max_length, median_length, avg_length, kmers_for_mean_length, num_of_sequences):
+#         self.name = name
+#         self.min_length = int(min_length)
+#         self.max_length = int(max_length)
+#         self.median_length = int(median_length)
+#         self.avg_length = float(avg_length)
+#         self.kmers_for_mean_length = int(kmers_for_mean_length)
+#         self.num_of_sequences = int(num_of_sequences)
+#         self.info = ""
+#
+#     def set_info(self, info):
+#         self.info = info
 
 
 class jf_object:
