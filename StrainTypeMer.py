@@ -759,7 +759,7 @@ def calculate_matrix(strain_objs, count_table):
 
              similarity_dict[strain_keys[i]].update({strain_keys[j] :
                                                      (float(intersection) / total_kmers * 100,
-                                                     float(intersection) / total_kmers * 100,
+                                                     float(intersection) / smallest * 100,
                                                      total_kmers, smallest)})
 
 
