@@ -30,8 +30,8 @@ from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 ## CONFIGURATION INFORMATION ###########################################################################################
 jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.3/bin/jellyfish"
 jfobj.jellyfish_path = jellyfish_path
-jfobj.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
-jfobj.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
+#jfobj.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
+#jfobj.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
 ########################################################################################################################
 
 def adjust_font_size(matrix_length):

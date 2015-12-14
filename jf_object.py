@@ -61,7 +61,7 @@ class jf_object:
     """
     #kmer_cutoff = 0
     jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
-    ardb_info = prime_ardb()
+    #ardb_info = prime_ardb()
 
     def __init__(self, name, path):
         """
@@ -72,10 +72,10 @@ class jf_object:
         :return:
         """
         self.jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
-        self.ardb_dir = os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'ARDB_counts' )
+        #self.ardb_dir = os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'ARDB_counts' )
         #self.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
         #self.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
-        self.ardb_info = jf_object.ardb_info
+        #self.ardb_info = jf_object.ardb_info
 
         self.name = name
         self.path = path
@@ -102,9 +102,9 @@ class jf_object:
             sys.stderr.write("Jellyfish path not set\n")
             sys.stderr.write(self.jellyfish_path + "\n")
             sys.exit("2")
-        if os.path.isdir(self.ardb_dir) is False:
-            sys.stderr.write("ARDB fasta path not set\n")
-            sys.exit("2")
+        # if os.path.isdir(self.ardb_dir) is False:
+        #     sys.stderr.write("ARDB fasta path not set\n")
+        #     sys.exit("2")
 
 
     # def __parser_ardb_info(self):
@@ -150,7 +150,6 @@ class jf_object:
 
     def get_estimate_coverage(self):
         """Estimates the coverage for kmers count > 3 times"""
-
         try:
             if np.sum([float(i) * self.histo[i] for i in self.histo if i >= 3]) == 0 or \
                             float(np.sum(self.histo.values()[3:])) == 0:
@@ -226,20 +225,20 @@ class jf_object:
 
 
 
-    def compare_to_ardb(self):
-        _dict = {}
-        for _file in os.listdir(self.ardb_dir):
-            gene = _file.split(".")[0]
-            for i in open(os.path.join(self.ardb_dir, _file), "r"):
-                mer, count = i.strip().split("\t")
-                mer = jellyfish.MerDNA(mer)
-                mer.canonicalize()
-                if self.qf[mer] != 0:
-                    if gene in _dict:
-                        _dict[gene] += 1
-                    else:
-                        _dict.update({gene:1})
-        return _dict
+    # def compare_to_ardb(self):
+    #     _dict = {}
+    #     for _file in os.listdir(self.ardb_dir):
+    #         gene = _file.split(".")[0]
+    #         for i in open(os.path.join(self.ardb_dir, _file), "r"):
+    #             mer, count = i.strip().split("\t")
+    #             mer = jellyfish.MerDNA(mer)
+    #             mer.canonicalize()
+    #             if self.qf[mer] != 0:
+    #                 if gene in _dict:
+    #                     _dict[gene] += 1
+    #                 else:
+    #                     _dict.update({gene:1})
+    #     return _dict
 
     #def get_ardb_info(self, k):
     #    return self.ardb_info_parsed[k]
