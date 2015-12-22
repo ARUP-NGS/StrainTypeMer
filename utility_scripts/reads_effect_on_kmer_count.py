@@ -10,17 +10,20 @@ Staph/ENTEROCOCCUS == 3M / 150 == 20,000 reads 1X coverage
 Acinetobacter 4M/ 150 == 26,000 reads 1X coverage
 """
 
-def get_estimate_coverage(histo):
+def get_estimate_coverage(histo, covereage_estimate):
         """Estimates the coverage for kmers count > 3 times"""
         kmer_count = 0
         #print histo
+        cutoff = int(covereage_estimate * .2)
+        if cutoff < 3:
+            cutoff = 3
         try:
-            kmer_count =  np.sum([float(v) for k, v in histo.iteritems() if k >= 3])
+            kmer_count =  np.sum([float(v) for k, v in histo.iteritems() if k >= cutoff])
             if kmer_count == 0 or \
-                            float(np.sum(histo.values()[3:])) == 0:
+                            float(np.sum(histo.values()[cutoff:])) == 0:
                 _cov = 1
             else:
-                _cov = np.sum([float(v) * k for k, v in histo.iteritems()] / kmer_count)
+                _cov = np.sum([float(v) * k for k, v in histo.iteritems()[cutoff:]] / kmer_count)
         except:
             _cov = 1
         #print kmer_count, histo
@@ -51,12 +54,12 @@ for num_of_lines in range(increment, num_lines, increment):
 
     subprocess.Popen(cmd, shell=True,)
     op = subprocess.Popen(
-        ["jellyfish", "count", "-C", "-s", "2G", "-m", kmer_length, "-t", "8", "-o", "count.jf", "temp.fq"],)
+        ["/home/ksimmon/bin/jellyfish-2.2.3/bin/jellyfish", "count", "-C", "-s", "2G", "-m", kmer_length, "-t", "8", "-o", "count.jf", "temp.fq"],)
 
     out, err = op.communicate()
 
 
-    op = subprocess.Popen(["jellyfish", "histo", "count.jf"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    op = subprocess.Popen(["/home/ksimmon/bin/jellyfish-2.2.3/bin/jellyfish", "histo", "count.jf"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = op.communicate()
 
     if err != "":
@@ -70,7 +73,7 @@ for num_of_lines in range(increment, num_lines, increment):
         else:
             _histo.update({freq : count })
 
-    cov, kmer_count = get_estimate_coverage(_histo)
+    cov, kmer_count = get_estimate_coverage(_histo, starting_coverage)
     print "{0}\t{1}\t{2}\t{3}".format(starting_coverage, int(kmer_count), num_of_lines / 4, "{:.0f}".format(cov))
     starting_coverage += 5
 
