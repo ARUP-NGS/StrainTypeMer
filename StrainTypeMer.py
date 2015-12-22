@@ -28,7 +28,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 ## CONFIGURATION INFORMATION ###########################################################################################
-jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.3/bin/jellyfish"
+jellyfish_path = "/usr/local/bin/jellyfish"
 jfobj.jellyfish_path = jellyfish_path
 #jfobj.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
 #jfobj.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
@@ -513,13 +513,13 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     if kmer_reference is not None:
         #for ref in kmer_reference:
         if os.path.isfile(kmer_reference) is False:
-            sys.stderr.write("kmer reference file does not exist: {0}\n".format(ref))
+            sys.stderr.write("kmer reference file does not exist: {0}\n".format(kmer_reference))
             sys.exit(11)
 
     if reverse_kmer_reference is not None:
         #for ref in reverse_kmer_reference:
         if os.path.isfile(reverse_kmer_reference) is False:
-            sys.stderr.write("reverse kmer reference file does not exist: {0}\n".format(ref))
+            sys.stderr.write("reverse kmer reference file does not exist: {0}\n".format(reverse_kmer_reference))
             sys.exit(11)
 
 
@@ -551,11 +551,12 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     #  COMPARE STRAINS DIRECTLY
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    try:
-        subprocess.check_call([jellyfish_path, "merge", '-L', "2", "-o", jf_temp_file] + file_paths )
-    except:
-        sys.stderr.write("Error in running jellyfish merge\n")
-        sys.exit(3)
+    #try:
+    #subprocess.check_call([jellyfish_path, "stats", '-L', "2",] + [file_paths[0]] )
+    subprocess.check_call([jellyfish_path, "merge", '-L', "2", "-o", jf_temp_file] +  file_paths )
+    #except :
+        #sys.stderr.write("Error in running jellyfish merge\n")
+        #sys.exit(3)
 
     merged_jf = jf_temp_file
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -759,7 +760,7 @@ def calculate_matrix(strain_objs, count_table):
 
              similarity_dict[strain_keys[i]].update({strain_keys[j] :
                                                      (float(intersection) / total_kmers * 100,
-                                                     float(intersection) / smallest * 100,
+                                                     float(intersection) / total_kmers * 100,
                                                      total_kmers, smallest)})
 
 

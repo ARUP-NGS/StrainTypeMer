@@ -1,5 +1,3 @@
-__author__ = 'ksimmon'
-
 import jellyfish
 import subprocess
 import sys
@@ -7,61 +5,12 @@ import numpy as np
 import os, os.path
 from collections import OrderedDict
 
-
-# def prime_ardb():
-#     """
-#     This sets up the ARDB information so the annotations can occur
-#
-#     :return: _d dictionary with the ARDB name and a ARDB_object
-#     """
-#     ardb_stats = os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'ARDB_stats.txt' )
-#     ardb_info =  os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'class2info.tab' )
-#
-#     if os.path.isfile(ardb_stats)is False:
-#             sys.stderr.write("ARDB stats file could not be found\n")
-#             sys.exit("2")
-#
-#     if os.path.isfile(ardb_info)is False:
-#             sys.stderr.write("ARDB info file could not be found\n")
-#             sys.exit("2")
-#
-#     _d = {}
-#     for line in open(ardb_stats):
-#         if line[0] != "#":
-#             l = line.strip().split("\t")
-#             _d.update({l[0]: ardb_object(l[0],l[1],l[2],l[3],l[4],l[5],l[6], )})
-#
-#     for line in open(ardb_info):
-#         name, info = line.strip().split("\t")
-#         _d[name].set_info(info)
-#     return _d
-#
-#
-# class ardb_object:
-#     """
-#     contains basic information for a ARDB class
-#     """
-#     def __init__(self, name, min_length, max_length, median_length, avg_length, kmers_for_mean_length, num_of_sequences):
-#         self.name = name
-#         self.min_length = int(min_length)
-#         self.max_length = int(max_length)
-#         self.median_length = int(median_length)
-#         self.avg_length = float(avg_length)
-#         self.kmers_for_mean_length = int(kmers_for_mean_length)
-#         self.num_of_sequences = int(num_of_sequences)
-#         self.info = ""
-#
-#     def set_info(self, info):
-#         self.info = info
-
-
 class jf_object:
     """
     Contains information about the jellyfish db for a single strain
     """
     #kmer_cutoff = 0
-    jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
-    #ardb_info = prime_ardb()
+    jellyfish_path = "/usr/local/bin/jellyfish"
 
     def __init__(self, name, path):
         """
@@ -71,7 +20,7 @@ class jf_object:
         :param path:
         :return:
         """
-        self.jellyfish_path = "/home/ksimmon/bin/jellyfish-2.2.0/bin/jellyfish"
+        self.jellyfish_path = "/usr/local/bin/jellyfish"
         #self.ardb_dir = os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'ARDB_counts' )
         #self.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
         #self.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
@@ -98,6 +47,8 @@ class jf_object:
         #self.percentage_of_kmers()
 
     def __check_resources(self):
+
+        #print os.path.exists(self.jellyfish_path)
         if os.path.exists(self.jellyfish_path) is False:
             sys.stderr.write("Jellyfish path not set\n")
             sys.stderr.write(self.jellyfish_path + "\n")
@@ -114,7 +65,6 @@ class jf_object:
         op = subprocess.Popen([self.jellyfish_path, "stats", self.path],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = op.communicate()
-
         if err != "":
             sys.stderr.write("Failed to retrieve db stats\n JELLYFISH ERROR: {0}\n".format(err))
             sys.exit(1)
@@ -128,6 +78,7 @@ class jf_object:
         self.max_count = int(out[3].split(" ")[-1])
 
     def get_histo(self):
+
         #print self.max_count
         _histo = OrderedDict()
         #_histo = { i+1 : 0  for i in range(300)}
