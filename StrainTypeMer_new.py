@@ -65,8 +65,6 @@ def adjust_font_size(matrix_length):
         adjusted_size = 0
     return adjusted_size
 
-
-
 def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmin=50):
     """
     This function saves a PDF file containing a clustered matrix (nearest neighbor).
@@ -406,9 +404,8 @@ def output_ardb_information(strain_objs, ardb_results, output_prefix):
 def arguments():
     """
     Parses user supplied arguments for StrainTypeMer subcommands
-    :return: named tuble of arguments
+    :return: named tuple of arguments
     """
-
     parser = argparse.ArgumentParser(prog="StrainTypeMer", formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="the script take multiple jellyfish counts and compares the strains")
 
@@ -449,10 +446,6 @@ def arguments():
                               help="This will prevent the output of the PDF files containing the matrix", default=True,
                               action="store_false")
 
-    # parser_query.add_argument("--do_not_output_ardb",
-    #                           help="This will prevent the output of the PDF files containing the ardb", default=True,
-    #                           action="store_false")
-
     parser_query.add_argument("--no_pdfs", help="Output will only goto stdout", default=False, action="store_true")
 
     parser_query.add_argument("-o", "--output_prefix", help="appends a prefix to the output files", default="")
@@ -471,17 +464,23 @@ def arguments():
 
 
 
-
 def main():
     args = arguments()
     if args.subparser_name == "compare_strains":
+        #set output of pdfs to false
         if args.no_pdfs:
             args.do_not_output_histogram, args.do_not_output_matrix = False, False
-
         compare_strains(jf_files=args.jf_files, no_kmer_filtering=args.no_kmer_filtering, cutoff=args.cutoff,
                         cpus=args.cpus, coverage_cutoff=args.coverage_cutoff,kmer_reference=args.kmer_reference,
                         reverse_kmer_reference=args.reverse_kmer_reference,output_histogram=args.do_not_output_histograms,
                         output_matrix=args.do_not_output_matrix, output_prefix=args.output_prefix)
+
+
+
+    else: ##next subparser
+        pass
+
+
 
 if __name__ == "__main__":
     main()

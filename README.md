@@ -1,22 +1,25 @@
 # StrainTypeMer
 
-StrainTypeMer is a tool for comparing strains of bacteria. StrainTypeMer uses kmer count output from jellyfish to compare strains. StrainTyper is multithreaded and can perform comparisons within minutes.  Fast-mode compares 100,000 kmer and produces results nearly identical to a full comparison in less than a minute.
+StrainTypeMer is a tool for comparing bacterial strains. StrainTypeMer uses kmer count output from jellyfish to 
+compare strains. StrainTyper is multithreaded and can perform comparisons within minutes.  Fast-mode compares 100,000 
+kmers and produces results nearly identical to a full comparison in less than a minute.
 
 The results of StrainTypeMer include:
+
 * Simlarity Table - displays the percentage of kmers shared between each strain combination
 * Distance Matrix - png that used clustering to show the strain relationships
 * Histogram Plots - PDF showing results of five strains per page.
-* Sample Summary - written to standard
+* Sample results - written to standard out
     1. Estimated genome size of each strain
     2. Coverage cutoff
-    3. ARDB - Antibiotic Resistance Database content
+    3. MLST profile (for Acinetobacter;
+    4. ARDB - Antibiotic Resistance Database content
         * Each strain is queried for kmers for gene present in the ARDB
         * Number of kmers are report for each gene family
 
 
 <hr>
-
-### CONSIDERATIONS
+### REQUIREMENTS
 
 In order to use StrainTypeMer you must first count kmers using [jellyfish 2.2.3 of greater](https://github.com/gmarcais/Jellyfish)
 for each strain.  While preprocessing is not required it can be performed prior to kmer counting.  We generally remove
