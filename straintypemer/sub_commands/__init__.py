@@ -1,9 +1,10 @@
-import jellyfish
+#import jellyfish
 import subprocess
 import sys
 import numpy as np
 import os, os.path
 from collections import OrderedDict
+from straintypemer import _ROOT
 
 class jf_object:
     """

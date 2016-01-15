@@ -5,8 +5,8 @@ import subprocess
 from multiprocessing import Process, Queue
 import string
 import random
-from sub_commands import jf_object
-from plots import *
+from straintypemer.sub_commands import jf_object
+from straintypemer.sub_commands.plots import *
 
 
 def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, kmer_reference=None,
