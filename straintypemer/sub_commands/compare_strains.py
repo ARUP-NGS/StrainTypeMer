@@ -1,13 +1,44 @@
 import math
 import os.path
-import sys
-import subprocess
 from multiprocessing import Process, Queue
 import string
 import random
-from straintypemer.sub_commands import jf_object
+from straintypemer import _ROOT
 from straintypemer.sub_commands.plots import *
+from straintypemer.sub_commands import *
+from Bio import SeqIO
 
+
+def mlst_profiles():
+    mlst_profile_data = {}
+    resource_dir = os.path.join(_ROOT, 'mlst_resources')
+    strain_library = [i for i in os.listdir(resource_dir) if i != '__init__.py']
+    for strain in strain_library:
+        strain_dir = os.path.join(resource_dir, strain)
+        resource_files = (os.listdir(strain_dir))
+        strain_profile_file = [f for f in resource_files if ".txt" in f][0]
+        #print strain
+        #print strain_profile_file
+        strain_ST = {}
+        profile_order = []
+        for i, line in enumerate(open(os.path.join(strain_dir, strain_profile_file))):
+            if i == 0:
+                profile_order = line.strip().split("\t")[1 : len(resource_files)]
+            else:
+                st = line.strip().split("\t")[0 :len(resource_files)]
+                strain_ST.update({  ':'.join(st[1:]) : st[0]})
+        #print strain_ST
+
+        mlst_sequences = OrderedDict()
+        for profile in profile_order:
+            if profile not in mlst_sequences:
+                mlst_sequences.update({profile : []})
+
+            for sequence in SeqIO.parse(os.path.join(strain_dir, profile + ".tfa"), "fasta"):
+                mlst_sequences[profile].append( (sequence.name.split("_")[-1].split('-')[-1], str(sequence.seq), ))
+        #print mlst_sequences
+        mlst_profile_data.update({strain : {"st" : strain_ST, "sequences" : mlst_sequences}})
+    return mlst_profile_data
 
 def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, kmer_reference=None,
                     reverse_kmer_reference=None, output_histogram=True, output_matrix=True,
@@ -49,6 +80,7 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
         cpus = num_of_strains
 
     file_paths = []
+
     strain_objs = collections.OrderedDict()  # KEEP RECORD OF FILE PATHS and CREATE THE STRAIN OBJS FOR EACH STRAIN
     for f in jf_files:
         if os.path.exists(f) is False:  # MAKE SURE THE FILE EXISTS
@@ -168,12 +200,23 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
             else:
                 v.set_cutoff(int(math.ceil(v.coverage * coverage_cutoff)))
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    mlst = mlst_profiles() #load mlst profiles if in resource directory
 
+    sys.stdout.write('\n')
     sys.stdout.write(" STRAIN STATS ".center(80, "-") + "\n")
     for k, v in strain_objs.iteritems():
         sys.stdout.write("Strain: {:s}\n".format(k))
-        sys.stdout.write("\tInferred genome size: {:.0f}  [filtering kmers counted <= {:.0f} times]\n".format(
+        sys.stdout.write("\tInferred genome size: {0:,}  [filtering kmers counted <= {1:.0f} times]\n".format(
             v.estimate_genome_size(v.kmer_cutoff), v.kmer_cutoff))
+
+        #iterate through mlst
+        sys.stdout.write("\tMLST PROFILE: {0}\n".format(v.mlst_profile(mlst)))
+
+
+
+
+
+
     sys.stdout.write("".center(80, "-") + "\n\n")
 
     # FILTER TABLE CREATED ie [3,4,5] cutoff for each strian
@@ -188,7 +231,7 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
 
     sys.stdout.write(" FILTER INFO ".center(80, "-") + "\n")
     sys.stdout.write(
-        "{:.0f}\tkmers counted (n > 1) in all strains\n".format(len(count_table[i])))
+        "{0:,.0f}\tkmers counted (n > 1) in all strains\n".format(len(count_table[i])))
     sys.stdout.write("".center(80, "-") + "\n\n")
 
     if kmer_reference is not None:
@@ -233,9 +276,9 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
         generage_matrix(strain_keys, strain_keys, matrix_data, output_prefix, strain_kmer_counts)
 
     # write out Pdfs
+
     if output_histogram:
         produce_histograms(strain_objs, output_prefix)
-
     return
 
 
@@ -254,9 +297,9 @@ def calculate_matrix(strain_objs, count_table):
                 smallest = sum_2
 
             similarity_dict[strain_keys[i]].update({strain_keys[j]:
-                                                        (float(intersection) / total_kmers * 100,
-                                                         float(intersection) / smallest * 100,
-                                                         total_kmers, smallest)})
+                                                    (float(intersection) / total_kmers * 100,
+                                                     float(intersection) / smallest * 100,
+                                                     total_kmers, smallest)})
 
     # PRINT SIMILARITY TABlE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     sys.stdout.write("[SIMILARITY TABLE]\n")

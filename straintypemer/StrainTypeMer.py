@@ -7,6 +7,7 @@ The input of strains should be provided should be provided as a comma separated 
 assume sample name is before underscore
 """
 
+
 from straintypemer.sub_commands.compare_strains import compare_strains
 from straintypemer.sub_commands.update_mlst_resources import update_mlst_resources
 import argparse
@@ -416,7 +417,7 @@ def arguments():
 
     subparsers = parser.add_subparsers(help='sub-command help', dest='subparser_name', title="subcommands")
 
-    parser_query = subparsers.add_parser('compare_strains', help='query an NM or GENE in the transcript db', )
+    parser_query = subparsers.add_parser('compare', help='query an NM or GENE in the transcript db', )
 
     parser_query.add_argument("-c", "--cutoff",
                               help="The number of kmers to analyze [Default = None (e.g analyze all kmers)]", type=int,
@@ -467,10 +468,14 @@ def arguments():
 def main():
     args = arguments()
 
-    if args.subparser_name == "compare_strains":
+    if args.subparser_name == "compare":
         # set output of pdfs to false
         if args.no_pdfs:
-            args.do_not_output_histogram, args.do_not_output_matrix = False, False
+            histo = args.do_not_output_histogram, args.do_not_output_matrix = False, False
+
+
+
+
         compare_strains(jf_files=args.jf_files,
                         no_kmer_filtering=args.no_kmer_filtering,
                         cutoff=args.cutoff,

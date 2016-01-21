@@ -1,17 +1,18 @@
-#import jellyfish
+import jellyfish
 import subprocess
 import sys
 import numpy as np
-import os, os.path
+import os
+import os.path
 from collections import OrderedDict
-from straintypemer import _ROOT
+import itertools
 
 class jf_object:
     """
     Contains information about the jellyfish db for a single strain
     """
     #kmer_cutoff = 0
-    jellyfish_path = "/usr/local/bin/jellyfish"
+    jellyfish_path = "jellyfish"
 
     def __init__(self, name, path):
         """
@@ -21,17 +22,12 @@ class jf_object:
         :param path:
         :return:
         """
-        self.jellyfish_path = "/usr/local/bin/jellyfish"
-        #self.ardb_dir = os.path.join(os.path.dirname(sys.argv[0]), 'resources', 'ARDB_counts' )
-        #self.ardb_dir = "/home/ksimmon/reference/strian_typing_resources/ARDB/grouped_fastas/jf_files/dump/"
-        #self.ardb_info = "/home/ksimmon/reference/strian_typing_resources/ARDB/class2info.tab"
-        #self.ardb_info = jf_object.ardb_info
+        self.jellyfish_path = "jellyfish"
+
 
         self.name = name
         self.path = path
         self.qf = jellyfish.QueryMerFile(path)
-
-
 
         #self.ardb_info_parsed = self.__parser_ardb_info()
         self.get_stats()
@@ -40,7 +36,6 @@ class jf_object:
         self.__check_resources()
         self.shared_count = None
         self.kmer_cutoff = None
-
         self.kmer_reference_count = 0
         self.reverse_kmer_reference_count = 0
         self.kmer_count = 0
@@ -49,18 +44,11 @@ class jf_object:
 
     def __check_resources(self):
 
-        #print os.path.exists(self.jellyfish_path)
-        if os.path.exists(self.jellyfish_path) is False:
+
+        if os.path.exists(self.jellyfish_path) is False and os.access(self.jellyfish_path, os.X_OK):
             sys.stderr.write("Jellyfish path not set\n")
             sys.stderr.write(self.jellyfish_path + "\n")
             sys.exit("2")
-        # if os.path.isdir(self.ardb_dir) is False:
-        #     sys.stderr.write("ARDB fasta path not set\n")
-        #     sys.exit("2")
-
-
-    # def __parser_ardb_info(self):
-    #      return {line.split("\t")[0]: line.split("\t")[1].strip() for line in open(self.ardb_info,"r")}
 
     def get_stats(self):
         op = subprocess.Popen([self.jellyfish_path, "stats", self.path],
@@ -177,6 +165,53 @@ class jf_object:
 
 
 
+    def mlst_profile(self, mlst_list, kmer_size=31):
+        results = ""
+        if len(mlst_list) == 0:
+            return "no profiles loaded"
+        for strain, strain_profiles in mlst_list.iteritems():
+            matching_sequences = OrderedDict()
+            for gene, sequences in strain_profiles['sequences'].iteritems():
+                matching_sequences.update({gene : []})
+                for id, sequence in sequences:
+                    #print id
+                    for j in range(0, len(sequence) - kmer_size + 1):
+                        kmer = sequence[j:j+31]
+                        mer = jellyfish.MerDNA(str(kmer))
+                        mer.canonicalize()
+                        if self.qf[mer] == 0: # break loop if not exact match
+                            break
+                    else:
+                        matching_sequences[gene].append(id)
+            st_keys =  [":".join(t) for t in list(itertools.product(*matching_sequences.values()))]
+
+            for k in st_keys:
+                if k in strain_profiles['st']:
+                    st = strain_profiles['st'][k]
+                else:
+                    st = 'NONE'
+
+                results += "{0}\tST: {2}\tprofile: {1} [{3}]\n".format(strain, k, st,
+                                                                       ":".join(strain_profiles['sequences'].keys()))
+        return results
+
+
+# for fasta in fastas:
+#         for i, s in enumerate(SeqIO.parse(base + fasta, "fasta")):
+#             for j in range(0, len(s) - kmer_size + 1):
+#                 kmer = s.seq[j : j+31]
+#                 mer = jellyfish.MerDNA(str(kmer))
+#                 mer.canonicalize()
+#                 if qf[mer] == 0: # break loop if not exact match
+#                     break
+#             else:
+#                 gene = "_".join(s.name.split("_")[0:-1])
+#                 seq_num = s.name.split("_")[-1]
+#                 matching_sequences[gene].append(seq_num)
+
+#    return [":".join(t) for t in list(itertools.product(*matching_sequences.values()))]
+
+
     # def compare_to_ardb(self):
     #     _dict = {}
     #     for _file in os.listdir(self.ardb_dir):
@@ -192,5 +227,5 @@ class jf_object:
     #                     _dict.update({gene:1})
     #     return _dict
 
-    #def get_ardb_info(self, k):
+    # def get_ardb_info(self, k):
     #    return self.ardb_info_parsed[k]
