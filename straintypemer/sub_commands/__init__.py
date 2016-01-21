@@ -1,4 +1,3 @@
-import jellyfish
 import subprocess
 import sys
 import numpy as np
@@ -6,6 +5,11 @@ import os
 import os.path
 from collections import OrderedDict
 import itertools
+try:
+    import jellyfish
+except ImportError:
+    sys.stderr.write("Jellyfish 2 is not installed correctly make sure the python binding are installed\n")
+    raise
 
 class jf_object:
     """

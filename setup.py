@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='straintypemer',
     version='1.0b',
-    packages=['straintypemer/sub_commands/',],
+    packages=['straintypemer/sub_commands/', ],
     url='https://github.com/ARUP-NGS/StrainTypeMer',
     license='MIT',
     author='Keith E Simmon',

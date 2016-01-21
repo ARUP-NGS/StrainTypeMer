@@ -8,8 +8,8 @@ assume sample name is before underscore
 """
 
 
-from straintypemer.sub_commands.compare_strains import compare_strains
-from straintypemer.sub_commands.update_mlst_resources import update_mlst_resources
+from sub_commands.compare_strains import compare_strains
+from sub_commands.update_mlst_resources import update_mlst_resources
 import argparse
 import matplotlib
 matplotlib.use("Agg")
