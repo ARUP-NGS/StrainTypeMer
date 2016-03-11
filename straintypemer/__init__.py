@@ -44,12 +44,23 @@ mlst_urls = {'Acinetobacter baumannii Oxf': [
     ],
     'Staphylococcus aureus': [
         'http://pubmlst.org/data/profiles/saureus.txt',
-        'http://pubmlst.org/data/alleles/saureus/arcc.tfa',
-        'http://pubmlst.org/data/alleles/saureus/aroe.tfa',
-        'http://pubmlst.org/data/alleles/saureus/glpf.tfa',
-        'http://pubmlst.org/data/alleles/saureus/gmk_.tfa',
+        'http://pubmlst.org/data/alleles/saureus/arcC.tfa',
+        'http://pubmlst.org/data/alleles/saureus/aroE.tfa',
+        'http://pubmlst.org/data/alleles/saureus/glpF.tfa',
+        'http://pubmlst.org/data/alleles/saureus/gmk.tfa',
         'http://pubmlst.org/data/alleles/saureus/pta_.tfa',
-        'http://pubmlst.org/data/alleles/saureus/tpi_.tfa',
-        'http://pubmlst.org/data/alleles/saureus/yqil.tfa',
-    ], }
+        'http://pubmlst.org/data/alleles/saureus/tpi.tfa',
+        'http://pubmlst.org/data/alleles/saureus/yqiL.tfa',
+    ],
+    'Salmonella enterica': [
+        'http://pubmlst.org/data/profiles/senterica.txt',
+        'http://pubmlst.org/data/alleles/senterica/aroC.tfa',
+        'http://pubmlst.org/data/alleles/senterica/dnaN.tfa',
+        'http://pubmlst.org/data/alleles/senterica/hemD.tfa',
+        'http://pubmlst.org/data/alleles/senterica/hisD.tfa',
+        'http://pubmlst.org/data/alleles/senterica/purE.tfa',
+        'http://pubmlst.org/data/alleles/senterica/sucA.tfa',
+        'http://pubmlst.org/data/alleles/senterica/thrA.tfa',
+    ],
+}
 

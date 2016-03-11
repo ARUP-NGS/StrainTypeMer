@@ -1,8 +1,6 @@
 import math
 import os.path
 from multiprocessing import Process, Queue
-import string
-import random
 from straintypemer import _ROOT
 from straintypemer.sub_commands.plots import *
 from straintypemer.sub_commands import *
@@ -17,31 +15,28 @@ def mlst_profiles():
         strain_dir = os.path.join(resource_dir, strain)
         resource_files = (os.listdir(strain_dir))
         strain_profile_file = [f for f in resource_files if ".txt" in f][0]
-        #print strain
-        #print strain_profile_file
-        strain_ST = {}
+        strain_st = {}
         profile_order = []
         for i, line in enumerate(open(os.path.join(strain_dir, strain_profile_file))):
             if i == 0:
-                profile_order = line.strip().split("\t")[1 : len(resource_files)]
+                profile_order = [pro.lower() for pro in line.strip().split("\t")[1: len(resource_files)] ]
             else:
-                st = line.strip().split("\t")[0 :len(resource_files)]
-                strain_ST.update({  ':'.join(st[1:]) : st[0]})
-        #print strain_ST
+                st = line.strip().split("\t")[0: len(resource_files)]
+                strain_st.update({':'.join(st[1:]): st[0]})
 
         mlst_sequences = OrderedDict()
         for profile in profile_order:
             if profile not in mlst_sequences:
-                mlst_sequences.update({profile : []})
+                mlst_sequences.update({profile: []})
 
-            for sequence in SeqIO.parse(os.path.join(strain_dir, profile + ".tfa"), "fasta"):
+            fh = SeqIO.parse(os.path.join(strain_dir, profile + ".tfa"), "fasta")
+            for sequence in fh:
                 mlst_sequences[profile].append( (sequence.name.split("_")[-1].split('-')[-1], str(sequence.seq), ))
-        #print mlst_sequences
-        mlst_profile_data.update({strain : {"st" : strain_ST, "sequences" : mlst_sequences}})
+        mlst_profile_data.update({strain : {"st" : strain_st, "sequences" : mlst_sequences}})
     return mlst_profile_data
 
 def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, kmer_reference=None,
-                    reverse_kmer_reference=None, output_histogram=True, output_matrix=True,
+                    inverse_kmer_reference=None, output_histogram=True, output_matrix=True,
                     output_prefix=""):
     """
     This in the primary function which compares the strains
@@ -53,7 +48,7 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
     :param coverage_cutoff: [int] User overide of automated cutoff filter based on estimated sequence coverage
                             (not recommended)
     :param kmer_reference: supplement use kmer reference set for comparison (e.g. plasmid, core genome, pangenome kmers)
-    :param reverse_kmer_reference: supplement use kmer reference set for comparison
+    :param inverse_kmer_reference: supplement use kmer reference set for comparison
             (e.g. plasmid, core genome, pangenome kmers)
     :param output_histogram: [boolean] produce a PDF of the coverage histograms
     :param output_matrix: [boolean] produce a PDF of the matrix
@@ -69,10 +64,10 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
             sys.stderr.write("kmer reference file does not exist: {0}\n".format(kmer_reference))
             sys.exit(11)
 
-    if reverse_kmer_reference is not None:
+    if inverse_kmer_reference is not None:
         # for ref in reverse_kmer_reference:
-        if os.path.isfile(reverse_kmer_reference) is False:
-            sys.stderr.write("reverse kmer reference file does not exist: {0}\n".format(reverse_kmer_reference))
+        if os.path.isfile(inverse_kmer_reference) is False:
+            sys.stderr.write("reverse kmer reference file does not exist: {0}\n".format(inverse_kmer_reference))
             sys.exit(11)
 
     num_of_strains = len(jf_files)  # calculate the number of samples
@@ -131,7 +126,7 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
 
     for cpu in range(cpus):
         _obj = jobs.pop()
-        p = Process(target=count_kmers, args=(q, merged_jf, _obj, kmer_reference, reverse_kmer_reference, cutoff,),
+        p = Process(target=count_kmers, args=(q, merged_jf, _obj, kmer_reference, inverse_kmer_reference, cutoff,),
                     name=_obj.name)
         current_processes.append(p)
 
@@ -141,7 +136,7 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
 
     # keep the queue moving
     while len(jobs) != 0:
-        _name, _arr, k_arr, r_arr = q.get()  # PAUSES UNTIL A JOBS RETURN  #AM I WIATING FOR THE FIRST OBJECT
+        _name, _arr, k_arr, r_arr = q.get()  # PAUSES UNTIL A JOBS RETURN  #AM I WAITING FOR THE FIRST OBJECT
         # ardb_results.update({_name : ardb})
         num_of_strains_counted += 1
 
@@ -152,13 +147,13 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
         count_table_reverse_kmer_reference[strain_objs.keys().index(_name)] = np.array(r_arr)
 
         # start next job
-        p = Process(target=count_kmers, args=(q, merged_jf, jobs.pop(), kmer_reference, reverse_kmer_reference,
+        p = Process(target=count_kmers, args=(q, merged_jf, jobs.pop(), kmer_reference, inverse_kmer_reference,
                                               cutoff,), name=_obj.name)
         p.start()
     # nothing else to start
     # wait until the queue returns 'ALL THE THINGS'
     while num_of_strains_counted != len(strain_objs):  # finished processing
-        _name, _arr, k_arr, r_arr = q.get()  # PAUSES UNTIL A JOBS RETURN
+        _name, _arr, k_arr, r_arr = q.get()            # PAUSES UNTIL A JOBS RETURN
         # ardb_results.update({_name : ardb})
         num_of_strains_counted += 1
 
@@ -174,14 +169,13 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
         os.remove(merged_jf)
 
     sys.stdout.write(" COVERAGE INFORMATION ".center(80, "-") + "\n")
-    sys.stdout.write("calculations only include kmers counted > 3 times\n")
+    sys.stdout.write("Calculations only include kmers counted > 3 times\n")
 
     # determine kmer cutoff for each strain ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     cutoff_table = []  # this will hold the cutoff
     if no_kmer_filtering:
         for k, v in strain_objs.iteritems():
             sys.stdout.write("Strain: {:s}\t Coverage Estimate: {:.1f}\n".format(k, v.coverage))
-            # cutoff_table.append(0)
             v.set_cutoff(0)
     else:
         for k, v in strain_objs.iteritems():
@@ -198,9 +192,12 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
                 sys.stderr.write("".center(80, "-") + "\n\n")
                 v.set_cutoff(int(math.ceil(v.coverage * coverage_cutoff)))
             else:
-                v.set_cutoff(int(math.ceil(v.coverage * coverage_cutoff)))
+                if "IT" in v.name:
+                    v.set_cutoff(int(math.ceil(v.coverage * (coverage_cutoff * 2) )))
+                else:
+                    v.set_cutoff(int(math.ceil(v.coverage * coverage_cutoff)))
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    mlst = mlst_profiles() #load mlst profiles if in resource directory
+    mlst = mlst_profiles() # load mlst profiles if in resource directory
 
     sys.stdout.write('\n')
     sys.stdout.write(" STRAIN STATS ".center(80, "-") + "\n")
@@ -209,8 +206,9 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
         sys.stdout.write("\tInferred genome size: {0:,}  [filtering kmers counted <= {1:.0f} times]\n".format(
             v.estimate_genome_size(v.kmer_cutoff), v.kmer_cutoff))
 
-        #iterate through mlst
-        sys.stdout.write("\tMLST PROFILE: {0}\n".format(v.mlst_profile(mlst)))
+        # iterate through mlst
+        for profile in v.mlst_profile(mlst):
+            sys.stdout.write("\tMLST PROFILE: {0}\n".format(profile))
 
 
 
@@ -248,14 +246,14 @@ def compare_strains(jf_files, no_kmer_filtering, cutoff, cpus, coverage_cutoff, 
             generage_matrix(strain_keys, strain_keys, matrix_data_kmer_reference, output_prefix + "_kmer_reference",
                             strain_kmer_counts)
 
-    if reverse_kmer_reference is not None:
-        sys.stdout.write("[REVERSE KMER REFERENCE={0}]\n".format(reverse_kmer_reference).center(80, "-"))
+    if inverse_kmer_reference is not None:
+        sys.stdout.write("[INVERSE KMER REFERENCE={0}]\n".format(inverse_kmer_reference).center(80, "-"))
         count_table_reverse_kmer_reference = (np.array(count_table_reverse_kmer_reference).T - cutoff_cov).clip(0, 1)
         count_table_reverse_kmer_reference = count_table_reverse_kmer_reference[~np.all(
             count_table_reverse_kmer_reference == 0, axis=1)].T
 
         matrix_data_reverse_kmer_reference = calculate_matrix(strain_objs, count_table_reverse_kmer_reference)
-        sys.stdout.write("[END REVERSE KMER REFERENCE={0}]\n".format(reverse_kmer_reference).center(80, "-"))
+        sys.stdout.write("[END INVERSE KMER REFERENCE={0}]\n".format(inverse_kmer_reference).center(80, "-"))
 
         if output_matrix:
             strain_keys = strain_objs.keys()
@@ -298,7 +296,7 @@ def calculate_matrix(strain_objs, count_table):
 
             similarity_dict[strain_keys[i]].update({strain_keys[j]:
                                                     (float(intersection) / total_kmers * 100,
-                                                     float(intersection) / smallest * 100,
+                                                     float(intersection) / total_kmers * 100,
                                                      total_kmers, smallest)})
 
     # PRINT SIMILARITY TABlE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

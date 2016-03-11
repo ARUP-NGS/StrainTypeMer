@@ -64,14 +64,14 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
     # Compute and plot first dendrogram. [LEFT]
     ax1 = fig.add_axes([0.058,0.1,0.115,0.6], frame_on=False, )
     Y = sch.linkage(D, method='weighted')
-    Z1 = sch.dendrogram(Y, orientation='right', labels=y_labels, color_threshold=0, color_list=['k'] )
+    Z1 = sch.dendrogram(Y, orientation='left', labels=y_labels, color_threshold=0,) # color_list=['k'] )
     ax1.set_xticks([])
     ax1.set_yticks([])
 
     # Compute and plot second dendrogram. [TOP]
     ax2 = fig.add_axes([0.26,0.815,0.6,0.1], frame_on=False)
     Y = sch.linkage(D, method='weighted', )
-    Z2 = sch.dendrogram(Y, labels=x_labels, count_sort=False, color_threshold=0, color_list=['k'])
+    Z2 = sch.dendrogram(Y, labels=x_labels, count_sort=False, color_threshold=0,) # color_list=['k'])
     ax2.set_xticks([])
     ax2.set_yticks([])
 
@@ -99,8 +99,8 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
 
     #modifiy x ticks and labels
     axmatrix.set_xticks(range(len(x_labels)))
-    axmatrix.set_xticklabels(["{:s}\n(n={:,} kmers)".format(x_labels[i][:20].replace("_"," "),
-                                    strain_lengths[x_labels[i]]) for i in idx2 ], minor=False, multialignment='center',
+    axmatrix.set_xticklabels(["{0:s}".format((x_labels[i][:20] + "\n" + x_labels[i][21:40]).replace("_"," "),
+                            strain_lengths[x_labels[i]]) for i in idx2 ], minor=False, multialignment='center',
                              linespacing=1)
 
     axmatrix.xaxis.set_label_position("top")
@@ -114,7 +114,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
 
     #modify the y tick and labels
     axmatrix.set_yticks(range(len(y_labels)))
-    axmatrix.set_yticklabels( ["{:s}\n(n={:,} kmers)".format(y_labels[i][:20].replace("_"," "),
+    axmatrix.set_yticklabels( ["{:s}".format((y_labels[i][:20] + "\n" + y_labels[i][21:40]).replace("_"," "),
                                     strain_lengths[y_labels[i]]) for i in idx1 ], minor=False, multialignment='center',
                               linespacing=1)
 
