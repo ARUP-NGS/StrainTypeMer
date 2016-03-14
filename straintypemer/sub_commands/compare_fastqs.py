@@ -62,7 +62,7 @@ def parse_files(fq_files):
     return _files
 
 
-def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0):
+def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500M"):
     _results = [] # will hold a tuple with the 'label', 'jellyfish count file'
     for i, files in enumerate(files_to_compare):
         sys.stderr.write("counting kmers in strain {0}: {1}\n".format(i + 1, files[2]))
@@ -76,10 +76,10 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0):
 
         qual = '"' + str(chr(qual_filter + 33)) + '"'
         if gzipped:
-            p1 = subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L 3 -m 31 -s 500M -t {4} -C -o "
-                                   "{3} /dev/fd/0".format(files[0], f2, qual , temp_file, cpus)], shell=True)
+            p1 = subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L 3 -m 31 -s {5} -t {4} -C -o "
+                                   "{3} /dev/fd/0".format(files[0], f2, qual , temp_file, cpus, hash_size)], shell=True)
         else:
-            p1 = subprocess.check_call(["jellyfish", "count", "-Q", qual, "-L", "3", "-m", "31", "-s", "500M", "-t",
+            p1 = subprocess.check_call(["jellyfish", "count", "-Q", qual, "-L", "3", "-m", "31", "-s", hash_size, "-t",
                                         str(cpus), "-C", "-o", temp_file, files[0], f2],)
 
         _results.append((files[2],temp_file))
@@ -118,11 +118,11 @@ def compare_fastqs(fq_files=[], gzipped=False, cpus=1, coverage_cutoff=0, qual_f
             jf.set_cutoff(int(math.ceil(jf.coverage * coverage_cutoff)))
         else:
             jf.set_cutoff(int(math.ceil(jf.coverage * coverage_cutoff)))
-        # clean up the tmp file
-        os.remove(file_path)
+
     sys.stdout.write('\n')
     ##########################################################################
 
+    strain_objs = filter_coverage(strain_objs, cpus=cpus)
 
 
     mlst_path = os.path.join(_ROOT, "data/mlst_resources/mlst_profiles.pkl")
@@ -141,16 +141,13 @@ def compare_fastqs(fq_files=[], gzipped=False, cpus=1, coverage_cutoff=0, qual_f
             sys.stdout.write("\tMLST profile: {0}\n".format(profile))
 
 
-
-
-
     #CREATE DISTANCE MATRIX
-    matrix_data = calculate_matrix(strain_objs, cpus=cpus)
+    matrix_data, cluster_matrix = calculate_matrix(strain_objs, cpus=cpus)
     if output_matrix:
         sys.stderr.write("generating_figures\n")
         strain_keys = strain_objs.keys()
         strain_kmer_counts = {s_key : len(strain_objs[s_key].kmer_set) for i, s_key in enumerate(strain_keys)}
-        generage_matrix(strain_keys, strain_keys, matrix_data, output_prefix, strain_kmer_counts)
+        generage_matrix(strain_keys, strain_keys, cluster_matrix, output_prefix, strain_kmer_counts)
 
     # write out Pdfs
 
@@ -165,7 +162,7 @@ def compare_fastqs(fq_files=[], gzipped=False, cpus=1, coverage_cutoff=0, qual_f
 
 
 def calculate_matrix(strain_objs, cpus=2):
-    q = Queue()  # TODO EXPLORE PIPES
+    q = Queue()
     # create the job queue
     jobs = []
     num_of_strains_counted = 0
@@ -180,8 +177,11 @@ def calculate_matrix(strain_objs, cpus=2):
             jobs.append((strain_keys[i], strain_keys[j],))
             comparisons_to_make += 1
 
-    if jobs < cpus:
-        cpus = jobs
+
+    #these set comparisons should thread OK
+
+    if comparisons_to_make < cpus:
+        cpus = comparisons_to_make
 
     for cpu in range(cpus):
         strain_1, strain_2 = jobs.pop()
@@ -196,7 +196,7 @@ def calculate_matrix(strain_objs, cpus=2):
     # keep the queue moving
     while len(jobs) != 0:
         strain_1_name, strain_2_name, total, rescue, total_kmers, smallest = q.get()  # PAUSES UNTIL A JOBS RETURN
-        similarity_dict[strain_1_name].update({strain_2_name: (total, rescue,total_kmers, smallest)})
+        similarity_dict[strain_1_name].update({strain_2_name: (total, rescue, total_kmers, smallest)})
         num_of_strains_counted += 1
 
         sys.stderr.write("{0}\tof\t{1}\tcomparisons made {2}:{3}\n".format(num_of_strains_counted, comparisons_to_make,
@@ -211,14 +211,11 @@ def calculate_matrix(strain_objs, cpus=2):
     # wait until the queue returns 'ALL THE THINGS'
     while num_of_strains_counted != comparisons_to_make:  # finished processing
         strain_1_name, strain_2_name, total, rescue, total_kmers, smallest = q.get()
-        similarity_dict[strain_1_name].update({strain_2_name: (total, rescue,total_kmers, smallest)})# PAUSES
+        similarity_dict[strain_1_name].update({strain_2_name: (total, rescue, total_kmers, smallest)})# PAUSES
         num_of_strains_counted += 1
         sys.stderr.write("{0}\tof\t{1}\tcomparisons made {2}:{3}\n".format(num_of_strains_counted, comparisons_to_make,
                                                                            strain_1_name, strain_2_name))
-
     q.close()
-
-
 
 
 
@@ -227,20 +224,26 @@ def calculate_matrix(strain_objs, cpus=2):
     delimeter = ","
     _str = delimeter + delimeter.join(strain_keys) + "\n"
     matrix_data = []
+    matrix_data_cluster = []
     for i in range(len(strain_keys)):
         _str += strain_keys[i] + delimeter
 
         matrix_data.append([])
+        matrix_data_cluster.append([])
         for j in range(len(strain_keys)):
             if i == j:
                 matrix_data[i].append(100)
+                matrix_data_cluster[i].append(100)
                 # _str += "1.000" + delimeter
-                _str += "{:.13f}{:s}".format(100, delimeter)
+                _str += "{:.1f}{:s}".format(100, delimeter)
             elif i < j:
                 matrix_data[i].append(similarity_dict[strain_keys[i]][strain_keys[j]][0])
+                matrix_data_cluster[i].append(similarity_dict[strain_keys[i]][strain_keys[j]][0])
                 _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][0], delimeter)
             elif i > j:
                 matrix_data[i].append(similarity_dict[strain_keys[j]][strain_keys[i]][1])
+                matrix_data_cluster[i].append(similarity_dict[strain_keys[j]][strain_keys[i]][0])
+
                 _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][1], delimeter)
         _str = _str[:-1] + "\n"
     sys.stdout.write(_str)
@@ -263,9 +266,62 @@ def calculate_matrix(strain_objs, cpus=2):
         _str = _str[:-1] + "\n"
     sys.stdout.write(_str)
     sys.stdout.write("[DENOMINATOR TABLE END]\n")
-    return matrix_data
+    return matrix_data, matrix_data_cluster
 
 
 def compare_strains(q, strain_1, strain_2 ):
     q.put(strain_1.compare_to_set(strain_2))
+    return
+
+def filter_coverage(strain_objs, cpus=2):
+    q = Queue()
+    # create the job queue
+    jobs = []
+    # num_of_strains_counted = 0
+    current_processes = []
+    num_of_strains_filtered = 0
+
+    strain_keys = strain_objs.keys()
+    similarity_dict = OrderedDict()
+    for i in range(len(strain_keys)):
+        jobs.append(strain_keys[i])
+
+    if len(jobs) < cpus:
+        cpus = len(jobs)
+
+    for cpu in range(cpus):
+        strain = jobs.pop()
+        p = Process(target=filter_strains, args=(q, strain_objs[strain]), name=strain + ":filtering")
+        current_processes.append(p)
+
+    # start the jobs for the correct number of cpus
+    while len(current_processes) != 0:
+        current_processes.pop().start()
+
+    # keep the queue moving
+    while len(jobs) != 0:
+        name, kmer_set, jf_path = q.get()  # PAUSES UNTIL A JOBS RETURN
+        strain_objs[name].kmer_set = kmer_set
+        strain_objs[name].set_jf_file(jf_path)
+        num_of_strains_filtered += 1
+        sys.stderr.write("{0}\tof\t{1}\t strains filtered\n".format(num_of_strains_filtered, len(strain_objs)))
+
+        # start next job
+        strain = jobs.pop()
+        p = Process(target=filter_strains, args=(q, strain_objs[strain]), name=strain + ":filtering")
+        p.start()
+    # nothing else to start
+    # wait until the queue returns 'ALL THE THINGS'
+    while num_of_strains_filtered != len(strain_objs):  # finished processing
+        name, kmer_set, jf_path = q.get()  # PAUSES UNTIL A JOBS RETURN
+        strain_objs[name].kmer_set = kmer_set
+        strain_objs[name].set_jf_file(jf_path)
+
+        num_of_strains_filtered += 1
+        sys.stderr.write("{0}\tof\t{1}\t strains filtered\n".format(num_of_strains_filtered, len(strain_objs)))
+    q.close()
+    return strain_objs
+
+def filter_strains(q, strain ):
+    q.put(strain.filter())
     return

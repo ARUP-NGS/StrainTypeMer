@@ -108,9 +108,13 @@ class jf_object:
 
     def set_cutoff(self, cutoff):
         self.kmer_cutoff =  cutoff
-        self.__filter_jf_file()
-        self.get_stats()
+        # self.__filter_jf_file()
+        # self.get_stats()
 
+
+    def filter(self):
+        self.__filter_jf_file()
+        return self.name, self.kmer_set, self.filtered_jf_file
 
     def __filter_jf_file(self):
         dummy_jf_file = pkg_resources.resource_filename('straintypemer', 'data/dummy_A.jf')
@@ -120,6 +124,11 @@ class jf_object:
         self.rf = jellyfish.ReadMerFile(self.filtered_jf_file)
         self.__create_set()
         return
+
+    def set_jf_file(self, path):
+        self.qf = jellyfish.QueryMerFile(path)
+        self.rf = jellyfish.ReadMerFile(path)
+
 
     def get_shared_count(self):
         return self.shared_count
@@ -194,10 +203,10 @@ class jf_object:
             sys.stderr.write("Failed to retrieve db stats\n JELLYFISH ERROR: {0}\n".format(err))
             raise RuntimeError
         out = out.split("\n")
-        unique_kmers = int(out[0].split(" ")[-1])
+        # unique_kmers = int(out[0].split(" ")[-1])
         distinct_kmers = int(out[1].split(" ")[-1])
-        total_kmers = int(out[2].split(" ")[-1])
-        max_count = int(out[3].split(" ")[-1])
+        # total_kmers = int(out[2].split(" ")[-1])
+        # max_count = int(out[3].split(" ")[-1])
         os.remove(cmp_jf_file)
         return (float(self.distinct_kmers) + strain.distinct_kmers) / (distinct_kmers * 2.0) * 100
 
@@ -224,6 +233,7 @@ class jf_object:
 
     def clean_tmp_files(self):
         os.remove(self.filtered_jf_file)
+        os.remove(self.path)
 
 
 
