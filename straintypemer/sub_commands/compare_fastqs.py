@@ -1,16 +1,12 @@
-import argparse
 import os
 import sys
 from multiprocessing import Process, Queue
-import path
-from exceptions import OSError
 from straintypemer.sub_commands.plots import *
 import subprocess
 import random
 import string
 import math
 from straintypemer.sub_commands import jf_object
-import pkg_resources
 from straintypemer import _ROOT
 import cPickle
 from collections import OrderedDict
