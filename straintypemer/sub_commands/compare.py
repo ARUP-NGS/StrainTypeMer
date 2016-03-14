@@ -15,11 +15,28 @@ from collections import OrderedDict
 def parse_files(fq_files):
     """
     Parse the file string
+
+    fastq files can be input in several ways
+
+    Single file:
+    fg
+    Single file with label:
+    fq:label
+    paired_files:
+    fq1,fq2
+    paired_files with labels:
+    fq1,fq2:label
+
+    Additionally [NF] can be added to flag that the sample should not be filtered
     :param fq_files: String that contains file paths and labels
-    :return: (tuple with (file_1,file_2,label) [file_2 can be none
+    :return: (tuple with (file_1,file_2,label[NF]))
     """
     _files = [] # this will hold a tuple with (path_fastq_1, path_fastq_2, label)
     for f in fq_files:
+        do_not_filter_kmers = False
+        if "[NF]" in f:
+           do_not_filter_kmers = True
+        f = f.replace("[NF]", "")
         label, f1, f2 = None, None, None
         # get the path to first file { must exist }
         f1 = f.split(":")[0].split(",")[0]
@@ -50,7 +67,7 @@ def parse_files(fq_files):
         if f2 is not None and (os.path.isfile(f2)) is False:
             sys.stderr.write("file is not a valid file path: {0}\n".format(f2))
             raise IOError
-        _files.append((f1,f2,label))
+        _files.append((f1,f2,label, do_not_filter_kmers))
     # check to make sure the labels are unique
     if len(_files) != len(set([f[2] for f in _files])):
         sys.stderr.write("file labels are not unique\n")
@@ -59,11 +76,21 @@ def parse_files(fq_files):
 
 
 def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500M"):
+    """
+    makes system call to jellyfish to count the kmers in the fastq set
+
+    :param files_to_compare: tuple with (fastq1, fastq2, label, filtering_flag)
+    :param gzipped: True if files are gzipped
+    :param cpus: number of cpus to pass to jellyfish
+    :param qual_filter: flag to pass to jf to filter bases
+    :param hash_size: the initial hash size [default "500M"]
+    :return: tuple with (label, jf_file_path, filtering_flag)
+    """
     _results = [] # will hold a tuple with the 'label', 'jellyfish count file'
     for i, files in enumerate(files_to_compare):
         sys.stderr.write("counting kmers in strain {0}: {1}\n".format(i + 1, files[2]))
         # create temp file name
-        temp_file = "/tmp/tmp_{0}.jf".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
+        jf_file = "/tmp/tmp_{0}.jf".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
         # if file2 does not exist change to empty string
         if files[1] is None:
             f2 = ""
@@ -72,73 +99,99 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
 
         qual = '"' + str(chr(qual_filter + 33)) + '"'
         if gzipped:
-            p1 = subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L 3 -m 31 -s {5} -t {4} -C -o "
-                                   "{3} /dev/fd/0".format(files[0], f2, qual , temp_file, cpus, hash_size)], shell=True)
+            subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L 3 -m 31 -s {5} -t {4} -C -o "
+                                   "{3} /dev/fd/0".format(files[0], f2, qual , jf_file, cpus, hash_size)], shell=True)
         else:
-            p1 = subprocess.check_call(["jellyfish", "count", "-Q", qual, "-L", "3", "-m", "31", "-s", hash_size, "-t",
-                                        str(cpus), "-C", "-o", temp_file, files[0], f2],)
+            subprocess.check_call(["jellyfish", "count", "-Q", qual, "-L", "3", "-m", "31", "-s", hash_size, "-t",
+                                        str(cpus), "-C", "-o", jf_file, files[0], f2],)
 
-        _results.append((files[2],temp_file))
-
+        _results.append((files[2], jf_file, files[-1]))
     return _results
 
+def compare(fq_files=[], gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filter=0, output_matrix=True,
+            output_histogram=True, output_prefix="",  no_kmer_filtering=False, kmer_reference=None,
+            inverse_kmer_reference=None,):
+    """
+    The is the entry point for this subcommand:  compares multiple files
 
-
-
-def compare_fastqs(fq_files=[], gzipped=False, cpus=1, coverage_cutoff=0, qual_filter=0, output_matrix=True,
-                   output_histogram=True,
-                   output_prefix=""):
+    :param fq_files: the file list from the commandline (or a string list, see parse_files())
+    :param gzipped: True if files are gzipped
+    :param cpus: number of cpus to use
+    :param coverage_cutoff: percent of genome coverage to set kmer filters [DEFAULT .20]
+    :param qual_filter: phred score to filter bases in fq files
+    :param output_matrix: True if matrix pdf is to be output
+    :param output_histogram: True if histogram pdf is to be output
+    :param output_prefix: The basename to append to histogram and matrix outputs
+    :param no_kmer_filtering: True if turning of kmer filtering
+                (if '[NF]' in file label the filtering will be turned off)
+    :param kmer_reference: NOT IMPLEMENTED YET
+    :param inverse_kmer_reference: NOT IMPLEMENTED YET
+    :return: None
+    """
+    # Initial QC of files names
     if len(fq_files) < 2:
         sys.stderr.write("Not enough files to compare\n")
         raise Exception
     files_to_compare = parse_files(fq_files)
+
+    # count kmers in fastq files #these are the raw counts prior to filtering
     counts = count_kmers(files_to_compare, gzipped, cpus=cpus, qual_filter=qual_filter)
-    labels = [i[0] for i in counts]
-
-    #print out coverage
-    ### THREAD THIS SECTION ##########################################
-    strain_objs = {}
-    for label, file_path in counts:
+    sys.stdout.write("".center(80, "-") + "\n")
+    strain_objs = {} # create the strain objects
+    # calculated and set the coverage
+    for label, file_path, filter_file in counts:
         jf = jf_object(label, file_path)
-        strain_objs.update({ label : jf })
+        jf.do_not_filter = filter_file
+        strain_objs.update({label: jf})
         sys.stdout.write("Strain: {0:s}\t Coverage Estimate: {1:.1f}\n".format(label, jf.coverage))
-        if math.ceil(jf.coverage * coverage_cutoff) <= 3:
-            sys.stderr.write(" WARNING ".center(80, "-") + "\n")
-            sys.stderr.write("Strain: {0} has low coverage\n".format(label))
-            sys.stderr.write("Calculated cutoff is {0}\n".format(int(math.ceil(jf.coverage * coverage_cutoff))))
-            if (math.ceil(jf.coverage * coverage_cutoff)) < 3:
-                sys.stderr.write("Changing kmer cutoff to 3\n")
-                jf.set_cutoff(3)
-            sys.stderr.write("If estimated genome size is lower than expected consider repeating\n")
-            sys.stderr.write("".center(80, "-") + "\n\n")
-            jf.set_cutoff(int(math.ceil(jf.coverage * coverage_cutoff)))
+        if no_kmer_filtering:
+            jf.set_cutoff(None)
         else:
-            jf.set_cutoff(int(math.ceil(jf.coverage * coverage_cutoff)))
-
-    sys.stdout.write('\n')
+            if math.ceil(jf.coverage * coverage_cutoff) <= 3:
+                sys.stderr.write(" WARNING ".center(80, "-") + "\n")
+                sys.stderr.write("Strain: {0} has low coverage\n".format(label))
+                sys.stderr.write("Calculated cutoff is {0}\n".format(int(math.ceil(jf.coverage * coverage_cutoff))))
+                if (math.ceil(jf.coverage * coverage_cutoff)) < 3:
+                    sys.stderr.write("Changing kmer cutoff to 3\n")
+                    jf.set_cutoff(3)
+                sys.stderr.write("If estimated genome size is lower than expected consider repeating\n")
+                sys.stderr.write("".center(80, "-") + "\n\n")
+                jf.set_cutoff(int(math.ceil(jf.coverage * coverage_cutoff)))
+            else:
+                jf.set_cutoff(int(math.ceil(jf.coverage * coverage_cutoff)))
+    sys.stdout.write("".center(80, "-") + "\n")
     ##########################################################################
 
+    # Filter the kmers from the strain objs
     strain_objs = filter_coverage(strain_objs, cpus=cpus)
 
 
+    # Load mlst profiles
     mlst_path = os.path.join(_ROOT, "data/mlst_resources/mlst_profiles.pkl")
     mlst_profiles = None
     if os.path.isfile(mlst_path):
         mlst_profiles = cPickle.load(open(mlst_path))
 
 
-    # GIVE ME SOME STATS
+    # Print out strain stats
     sys.stdout.write(" STRAIN STATS ".center(80, "-") + "\n")
     for k, v in strain_objs.iteritems():
         sys.stdout.write("Strain: {:s}\n".format(k))
-        sys.stdout.write("\tInferred genome size: {0:,}  [filtering kmers counted <= {1:.0f} times]\n".format(
-                                                                v.estimate_genome_size(v.kmer_cutoff), v.kmer_cutoff))
+        if v.do_not_filter:
+            v.set_cutoff(0)
+            sys.stdout.write("\tInferred genome size: {0:,}  [no kmer filtering]\n".format(
+                    v.estimate_genome_size(v.kmer_cutoff)))
+        else:
+            sys.stdout.write("\tInferred genome size: {0:,}  [filtering kmers counted <= {1:.0f} times]\n".format(
+                                v.estimate_genome_size(v.kmer_cutoff), v.kmer_cutoff))
+
         for profile in  v.mlst_profiles(mlst_profiles):
             sys.stdout.write("\tMLST profile: {0}\n".format(profile))
+    sys.stdout.write("".center(80, "-") + "\n")
 
-
-    #CREATE DISTANCE MATRIX
+    # CREATE DISTANCE MATRIX
     matrix_data, cluster_matrix = calculate_matrix(strain_objs, cpus=cpus)
+    sys.stdout.write("".center(80, "-") + "\n")
     if output_matrix:
         sys.stderr.write("generating_figures\n")
         strain_keys = strain_objs.keys()
@@ -146,24 +199,28 @@ def compare_fastqs(fq_files=[], gzipped=False, cpus=1, coverage_cutoff=0, qual_f
         generage_matrix(strain_keys, strain_keys, cluster_matrix, output_prefix, strain_kmer_counts)
 
     # write out Pdfs
-
     if output_histogram:
         produce_histograms(strain_objs, output_prefix)
 
 
     for strain in strain_objs.itervalues():
         strain.clean_tmp_files()
-
     sys.stderr.write("completed analysis\n")
 
 
 def calculate_matrix(strain_objs, cpus=2):
+    """
+    Calculates the matrix by pairwise comparison of strains.
+
+    :param strain_objs: Dictionary of strain objects
+    :param cpus: number of processors to use
+    :return: matrix cluster with rescue, matrix cluster without rescue
+    """
     q = Queue()
     # create the job queue
     jobs = []
     num_of_strains_counted = 0
     current_processes = []
-
     strain_keys = strain_objs.keys()
     comparisons_to_make = 0
     similarity_dict = OrderedDict()
@@ -173,9 +230,7 @@ def calculate_matrix(strain_objs, cpus=2):
             jobs.append((strain_keys[i], strain_keys[j],))
             comparisons_to_make += 1
 
-
     #these set comparisons should thread OK
-
     if comparisons_to_make < cpus:
         cpus = comparisons_to_make
 
@@ -210,10 +265,9 @@ def calculate_matrix(strain_objs, cpus=2):
         similarity_dict[strain_1_name].update({strain_2_name: (total, rescue, total_kmers, smallest)})# PAUSES
         num_of_strains_counted += 1
         sys.stderr.write("{0}\tof\t{1}\tcomparisons made {2}:{3}\n".format(num_of_strains_counted, comparisons_to_make,
-                                                                           strain_1_name, strain_2_name))
+                                                                       strain_1_name, strain_2_name))
+    sys.stdout.write("".center(80, "-") + "\n")
     q.close()
-
-
 
     # PRINT SIMILARITY TABlE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     sys.stdout.write("[SIMILARITY TABLE]\n")
@@ -246,7 +300,7 @@ def calculate_matrix(strain_objs, cpus=2):
     sys.stdout.write("[SIMILARITY TABLE END]\n")
 
     # ADD DENOMINATOR TO OUTPUT
-    sys.stdout.write("\n\n")
+    sys.stdout.write("\n")
     sys.stdout.write("[DENOMINATOR TABLE]\n")
     _str = delimeter + delimeter.join(strain_keys) + "\n"
 
@@ -266,25 +320,40 @@ def calculate_matrix(strain_objs, cpus=2):
 
 
 def compare_strains(q, strain_1, strain_2 ):
-    q.put(strain_1.compare_to_set(strain_2))
+    """
+    place strain comparsion in a queue
+
+    :param q: the queue
+    :param strain_1:
+    :param strain_2:
+    :return: None
+    """
+    q.put(strain_1.compare_to(strain_2))
     return
 
 def filter_coverage(strain_objs, cpus=2):
-    q = Queue()
+    """
+    Thread function that filters out kmers most likely to be errors, setup jf_obj for comparisons
+
+    :param strain_objs: dictionary of strain objs
+    :param cpus:
+    :return: Strain objs
+    """
     # create the job queue
+    q = Queue()
     jobs = []
-    # num_of_strains_counted = 0
     current_processes = []
-    num_of_strains_filtered = 0
+    num_of_strains_filtered = 0 # counter
 
     strain_keys = strain_objs.keys()
-    similarity_dict = OrderedDict()
     for i in range(len(strain_keys)):
-        jobs.append(strain_keys[i])
+        jobs.append(strain_keys[i]) # holds the label for each strain
 
+    # reset the cpus if they are set too high
     if len(jobs) < cpus:
         cpus = len(jobs)
 
+    # find the initial jobs
     for cpu in range(cpus):
         strain = jobs.pop()
         p = Process(target=filter_strains, args=(q, strain_objs[strain]), name=strain + ":filtering")
@@ -300,8 +369,12 @@ def filter_coverage(strain_objs, cpus=2):
         strain_objs[name].kmer_set = kmer_set
         strain_objs[name].set_jf_file(jf_path)
         num_of_strains_filtered += 1
-        sys.stderr.write("{0}\tof\t{1}\t strains filtered\n".format(num_of_strains_filtered, len(strain_objs)))
-
+        if strain_objs[name].do_not_filter:
+            sys.stderr.write("{0} of {1}\t{2} processed [not filtered]\n".format(
+                    num_of_strains_filtered, len(strain_objs),  name,))
+        else:
+            sys.stderr.write("{0} of {1}\t{2} processed [filtered]\n".format(
+                    num_of_strains_filtered, len(strain_objs), name))
         # start next job
         strain = jobs.pop()
         p = Process(target=filter_strains, args=(q, strain_objs[strain]), name=strain + ":filtering")
@@ -314,10 +387,22 @@ def filter_coverage(strain_objs, cpus=2):
         strain_objs[name].set_jf_file(jf_path)
 
         num_of_strains_filtered += 1
-        sys.stderr.write("{0}\tof\t{1}\t strains filtered\n".format(num_of_strains_filtered, len(strain_objs)))
+        if strain_objs[name].do_not_filter:
+            sys.stderr.write("{0} of {1}\t{2} processed [not filtered]\n".format(
+                    num_of_strains_filtered, len(strain_objs),  name,))
+        else:
+            sys.stderr.write("{0} of {1}\t{2} processed [filtered]\n".format(
+                    num_of_strains_filtered, len(strain_objs), name))
     q.close()
     return strain_objs
 
 def filter_strains(q, strain ):
+    """
+    Places filtering into queue
+
+    :param q: the queue
+    :param strain: strain object to filter
+    :return:
+    """
     q.put(strain.filter())
     return

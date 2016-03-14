@@ -1,12 +1,13 @@
 import matplotlib
 matplotlib.use("Agg")
 import numpy as np
-import pylab
 import scipy.cluster.hierarchy as sch
 import collections
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as pylab
 from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_pdf import PdfPages
+# import matplotlib.pyplot as pylab
+
 
 def adjust_font_size(matrix_length):
     """
@@ -64,7 +65,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
     # Compute and plot first dendrogram. [LEFT]
     ax1 = fig.add_axes([0.058,0.1,0.115,0.6], frame_on=False, )
     Y = sch.linkage(D, method='weighted')
-    Z1 = sch.dendrogram(Y, orientation='right', labels=y_labels, color_threshold=0,) # color_list=['k'] )
+    Z1 = sch.dendrogram(Y, orientation='left', labels=y_labels, color_threshold=0,) # color_list=['k'] )
     ax1.set_xticks([])
     ax1.set_yticks([])
 
@@ -192,13 +193,13 @@ def generate_histo_values(jf_obj):
     """
     histo = collections.OrderedDict()
     for i in range(1, 351):
-        histo.update({i:0})
+        histo.update({i: 0})
     for k, v in  jf_obj.histo.iteritems():
         if k in histo:
             histo[k] += v
         elif k > 350:
             histo[350] += v
-    return histo.keys(), histo.values(), max(histo.values()[3:-2]) * 1.5
+    return histo.keys(), histo.values(), max(histo.values()[3: -2]) * 1.5
 
 def produce_histograms(jf_objects, output_prefix):
     """
@@ -218,12 +219,12 @@ def produce_histograms(jf_objects, output_prefix):
     #plt.use("Agg")
     for chunk in jf_chunks:
 
-        fig = plt.figure()
+        fig = pylab.figure()
         fig.set_size_inches(11, 8.5)
 
         idx = 0
 
-        plt.subplots_adjust(hspace = .4, wspace=.001)
+        pylab.subplots_adjust(hspace = .4, wspace=.001)
         this_plot = 1
         for name, strain in chunk:
             ax = fig.add_subplot(5,1,this_plot)
@@ -264,8 +265,8 @@ def produce_histograms(jf_objects, output_prefix):
                              xytext=(xlim * .90 , ylim * .60), fontsize=8, color='#483C32', horizontalalignment='right')
         #
         #     if this#~~~~~~~~
-            plt.xticks(fontsize=9)
-            plt.yticks(fontsize=9)
+            pylab.xticks(fontsize=9)
+            pylab.yticks(fontsize=9)
             if this_plot == 4:
                 ax.set_ylabel("kmers with a given count", fontsize=12)
 
@@ -279,6 +280,6 @@ def produce_histograms(jf_objects, output_prefix):
 
 
         pdf.savefig(transparent=True)
-        plt.close()
+        pylab.close()
     pdf.close()
     return

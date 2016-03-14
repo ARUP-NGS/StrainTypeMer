@@ -9,11 +9,10 @@ import string
 import itertools
 import pkg_resources
 
-
 try:
     import jellyfish
 except ImportError:
-    sys.stderr.write("Jellyfish is not installed correctly make sure the python bindings are installed\n")
+    ImportError.message += "Jellyfish is not installed correctly make sure the python bindings are installed\n"
     raise ImportError
 
 class jf_object:
@@ -32,6 +31,7 @@ class jf_object:
         self.jellyfish_path = "jellyfish"
         self.name = name
         self.path = path
+        self.do_not_filter = False
         self.histo = self.get_histo()
         self.coverage = self.get_estimate_coverage()
         self.__check_resources()
@@ -43,9 +43,8 @@ class jf_object:
         self.kmer_set = set([])
         self.filtered_jf_file = "/tmp/tmp_filtered_{0}.jf".format(''.join(random.choice(string.ascii_uppercase)
                                                                           for i in range(8)))
-        self.qf = None # jellyfish.QueryMerFile(self.filtered_jf_file)
-        self.rf = None # jellyfish.QueryMerFile(self.filtered_jf_file)
-
+        self.qf = None
+        self.rf = None
 
     def __check_resources(self):
         if os.path.exists(self.jellyfish_path) is False and os.access(self.jellyfish_path, os.X_OK):
@@ -107,31 +106,55 @@ class jf_object:
 
 
     def set_cutoff(self, cutoff):
+        """
+        Set the cutoff on which to filter the kmer set
+        :param cutoff: int with cutoff value
+        :return: None
+        """
         self.kmer_cutoff =  cutoff
-        # self.__filter_jf_file()
-        # self.get_stats()
+        return
 
 
     def filter(self):
+        """
+        filters the kmer set
+        created to allow threading of the filtering
+        :return: Name of the object, the kmer set set([]), and the path to the filtered file in tmp directory
+        """
         self.__filter_jf_file()
         return self.name, self.kmer_set, self.filtered_jf_file
 
     def __filter_jf_file(self):
-        dummy_jf_file = pkg_resources.resource_filename('straintypemer', 'data/dummy_A.jf')
-        p1 = subprocess.check_call(["jellyfish", "merge", "-L", str(int(self.kmer_cutoff) + 1),
-                                    "-o", self.filtered_jf_file, self.path, dummy_jf_file],)
-        self.qf = jellyfish.QueryMerFile(self.filtered_jf_file)
-        self.rf = jellyfish.ReadMerFile(self.filtered_jf_file)
-        self.__create_set()
+        """
+        filters the raw kmer count set based on kmer cutoff and set the queryfile and readfile paths
+        :return: None
+        """
+        if self.do_not_filter:
+            self.filtered_jf_file = self.path
+            self.qf = jellyfish.QueryMerFile(self.path)
+            self.rf = jellyfish.ReadMerFile(self.path)
+            self.__create_set()
+        else:
+            dummy_jf_file = pkg_resources.resource_filename('straintypemer', 'data/dummy_A.jf')
+            subprocess.check_call(["jellyfish", "merge", "-L", str(int(self.kmer_cutoff) + 1),
+                                        "-o", self.filtered_jf_file, self.path, dummy_jf_file],)
+
+            self.qf = jellyfish.QueryMerFile(self.filtered_jf_file)
+            self.rf = jellyfish.ReadMerFile(self.filtered_jf_file)
+            self.__create_set()
         return
 
     def set_jf_file(self, path):
+        """
+        set the path to the query and readmer files
+
+        :param path:
+        :return: None
+        """
         self.qf = jellyfish.QueryMerFile(path)
         self.rf = jellyfish.ReadMerFile(path)
+        return None
 
-
-    def get_shared_count(self):
-        return self.shared_count
 
     def __str__(self):
         return "Name:\t{0}\n".format(self.name) + \
@@ -189,34 +212,11 @@ class jf_object:
             sys.stderr.write("Error in running jellyfish count\n")
             raise RuntimeError
 
-
-    def compare_to(self, strain):
-        cmp_jf_file = "/tmp/tmp_cmp_{0}.jf".format(''.join(random.choice(string.ascii_uppercase)
-                                                                          for i in range(8)))
-        p1 = subprocess.check_call(["jellyfish", "merge", "-o", cmp_jf_file,
-                                    self.filtered_jf_file, strain.filtered_jf_file],)
-
-        op = subprocess.Popen([self.jellyfish_path, "stats", cmp_jf_file],
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = op.communicate()
-        if err != "":
-            sys.stderr.write("Failed to retrieve db stats\n JELLYFISH ERROR: {0}\n".format(err))
-            raise RuntimeError
-        out = out.split("\n")
-        # unique_kmers = int(out[0].split(" ")[-1])
-        distinct_kmers = int(out[1].split(" ")[-1])
-        # total_kmers = int(out[2].split(" ")[-1])
-        # max_count = int(out[3].split(" ")[-1])
-        os.remove(cmp_jf_file)
-        return (float(self.distinct_kmers) + strain.distinct_kmers) / (distinct_kmers * 2.0) * 100
-
-
-
     def __create_set(self):
         for mer, count in self.rf:
             self.kmer_set.add(str(mer))
 
-    def compare_to_set(self, strain):
+    def compare_to(self, strain):
 
         intersection = float(len(self.kmer_set.intersection(strain.kmer_set)))
         denom = ((len(self.kmer_set) - intersection) + (len(strain.kmer_set) - intersection)) + intersection
@@ -232,11 +232,14 @@ class jf_object:
 
 
     def clean_tmp_files(self):
-        os.remove(self.filtered_jf_file)
-        os.remove(self.path)
-
-
-
+        try:
+            os.remove(self.path)
+        except OSError:
+            pass
+        try:
+            os.remove(self.filtered_jf_file)
+        except OSError:
+            pass
 
     def mlst_profiles(self, mlst_profiles):
         results = []

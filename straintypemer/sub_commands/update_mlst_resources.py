@@ -11,7 +11,6 @@ from straintypemer import _ROOT
 from straintypemer import mlst_urls
 
 
-
 def update_mlst_resources():
     resource_path = os.path.join(_ROOT, "data/mlst_resources/")
     if os.path.exists(resource_path) is False:
@@ -31,12 +30,11 @@ def update_mlst_resources():
             sys.stderr.write('\tsaving: {0}\n'.format(url.split("/")[-1].lower().replace("_.",".")))
             urllib.urlretrieve(url, os.path.join(strain_path, url.split("/")[-1].lower().replace("_.",".") ))
     pickle_profiles(file_lists, resource_path)
+    return
 
 
-def pickle_profiles(file_lists, resource_path):
-    kmer_size = 31
+def pickle_profiles(file_lists, resource_path, kmer_size=31):
     jellyfish.MerDNA_k(kmer_size)
-
     #instantiate the pickle obj
     mlst_profiles_dict = {}
     for species, file_list in file_lists.iteritems():
@@ -71,5 +69,7 @@ def pickle_profiles(file_lists, resource_path):
                     mlst_profiles_dict[species]["GENES"][gene_name][seq_num].add(str(mer))
             sys.stderr.write("\tparsing: {0} : {1}\n".format(species, gene_name))
     cPickle.dump(mlst_profiles_dict, open(os.path.join(resource_path, "mlst_profiles.pkl"), "wb") )
-
+    for f in file_lists.itervalues():
+        os.remove(f)
+    return
 
