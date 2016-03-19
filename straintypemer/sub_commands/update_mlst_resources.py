@@ -1,8 +1,5 @@
-#import urllib.request
 import sys
 import urllib
-# import path
-import pkg_resources
 import cPickle
 import jellyfish
 from Bio import SeqIO
@@ -69,7 +66,5 @@ def pickle_profiles(file_lists, resource_path, kmer_size=31):
                     mlst_profiles_dict[species]["GENES"][gene_name][seq_num].add(str(mer))
             sys.stderr.write("\tparsing: {0} : {1}\n".format(species, gene_name))
     cPickle.dump(mlst_profiles_dict, open(os.path.join(resource_path, "mlst_profiles.pkl"), "wb") )
-    for f in file_lists.itervalues():
-        os.remove(f)
     return
 

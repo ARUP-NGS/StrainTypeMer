@@ -31,11 +31,11 @@ def parse_files(fq_files):
     :param fq_files: String that contains file paths and labels
     :return: (tuple with (file_1,file_2,label[NF]))
     """
-    _files = [] # this will hold a tuple with (path_fastq_1, path_fastq_2, label)
+    _files = []  # this will hold a tuple with (path_fastq_1, path_fastq_2, label)
     for f in fq_files:
         do_not_filter_kmers = False
         if "[NF]" in f:
-           do_not_filter_kmers = True
+            do_not_filter_kmers = True
         f = f.replace("[NF]", "")
         label, f1, f2 = None, None, None
         # get the path to first file { must exist }
@@ -44,12 +44,12 @@ def parse_files(fq_files):
         if "," in f:
             f2 = f.split(":")[0].split(",")[-1]
         # get the label
-        if ":" in f: # the input includes the label
+        if ":" in f:  # the input includes the label
             label = f.strip().split(":")[-1]
-        else: # label must be retrieved from file name
-            if f2 is None: # only one file
+        else:  # label must be retrieved from file name
+            if f2 is None:  # only one file
                 label = os.path.basename(f1)
-            else: # get
+            else:  # get
                 label = ""
                 for s1, s2 in zip(os.path.basename(f1), os.path.basename(f2)):
                     if s1 == s2:
@@ -67,7 +67,7 @@ def parse_files(fq_files):
         if f2 is not None and (os.path.isfile(f2)) is False:
             sys.stderr.write("file is not a valid file path: {0}\n".format(f2))
             raise IOError
-        _files.append((f1,f2,label, do_not_filter_kmers))
+        _files.append((f1, f2, label, do_not_filter_kmers))
     # check to make sure the labels are unique
     if len(_files) != len(set([f[2] for f in _files])):
         sys.stderr.write("file labels are not unique\n")
@@ -86,9 +86,13 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
     :param hash_size: the initial hash size [default "500M"]
     :return: tuple with (label, jf_file_path, filtering_flag)
     """
-    _results = [] # will hold a tuple with the 'label', 'jellyfish count file'
+    _results = []  # will hold a tuple with the 'label', 'jellyfish count file'
     for i, files in enumerate(files_to_compare):
-        sys.stderr.write("counting kmers in strain {0}: {1}\n".format(i + 1, files[2]))
+        sys.stderr.write("\rcounting kmers in strain {0} of {1}: {2}".format(i + 1, len(files_to_compare), files[2]))
+        if i != len(files_to_compare) - 1:
+            sys.stderr.flush()
+        else:
+            sys.stderr.write("\n")
         # create temp file name
         jf_file = "/tmp/tmp_{0}.jf".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
         # if file2 does not exist change to empty string
@@ -97,19 +101,21 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
         else:
             f2 = files[1]
 
-        qual = '"' + str(chr(qual_filter + 33)) + '"'
+        qual =   str(chr(qual_filter + 33))
         if gzipped:
             subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L 3 -m 31 -s {5} -t {4} -C -o "
-                                   "{3} /dev/fd/0".format(files[0], f2, qual , jf_file, cpus, hash_size)], shell=True)
+                                   "{3} /dev/fd/0".format(files[0], f2, '"' + qual + '"', jf_file, cpus, hash_size)],
+                                  shell=True)
         else:
-            subprocess.check_call(["jellyfish", "count", "-Q", qual, "-L", "3", "-m", "31", "-s", hash_size, "-t",
-                                        str(cpus), "-C", "-o", jf_file, files[0], f2],)
-
+            r = subprocess.check_call(["jellyfish", "count", "-Q", qual, "-L", "3", "-m", "31", "-s", hash_size, "-t",
+                                   str(cpus), "-C", "-o", jf_file, files[0], f2], )
+            print r
         _results.append((files[2], jf_file, files[-1]))
     return _results
 
-def compare(fq_files=[], gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filter=0, output_matrix=True,
-            output_histogram=True, output_prefix="",  no_kmer_filtering=False, kmer_reference=None,
+
+def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filter=0, output_matrix=True,
+            output_histogram=True, output_prefix="", no_kmer_filtering=False, kmer_reference=None,
             inverse_kmer_reference=None,):
     """
     The is the entry point for this subcommand:  compares multiple files
@@ -137,7 +143,7 @@ def compare(fq_files=[], gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filter
     # count kmers in fastq files #these are the raw counts prior to filtering
     counts = count_kmers(files_to_compare, gzipped, cpus=cpus, qual_filter=qual_filter)
     sys.stdout.write("".center(80, "-") + "\n")
-    strain_objs = {} # create the strain objects
+    strain_objs = {}  # create the strain objects
     # calculated and set the coverage
     for label, file_path, filter_file in counts:
         jf = jf_object(label, file_path)
@@ -165,29 +171,66 @@ def compare(fq_files=[], gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filter
     # Filter the kmers from the strain objs
     strain_objs = filter_coverage(strain_objs, cpus=cpus)
 
-
     # Load mlst profiles
     mlst_path = os.path.join(_ROOT, "data/mlst_resources/mlst_profiles.pkl")
     mlst_profiles = None
     if os.path.isfile(mlst_path):
         mlst_profiles = cPickle.load(open(mlst_path))
 
+    # antibiotic_resistance_genes
+    strain_objs = compare_ard(strain_objs)
 
     # Print out strain stats
     sys.stdout.write(" STRAIN STATS ".center(80, "-") + "\n")
-    for k, v in strain_objs.iteritems():
-        sys.stdout.write("Strain: {:s}\n".format(k))
-        if v.do_not_filter:
-            v.set_cutoff(0)
+    for name, file_path, filter_file in counts:
+        sys.stdout.write("Strain: {:s}\n".format(name))
+        if strain_objs[name].do_not_filter:
+            strain_objs[name].set_cutoff(0)
             sys.stdout.write("\tInferred genome size: {0:,}  [no kmer filtering]\n".format(
-                    v.estimate_genome_size(v.kmer_cutoff)))
+                    strain_objs[name].estimate_genome_size(strain_objs[name].kmer_cutoff)))
         else:
             sys.stdout.write("\tInferred genome size: {0:,}  [filtering kmers counted <= {1:.0f} times]\n".format(
-                                v.estimate_genome_size(v.kmer_cutoff), v.kmer_cutoff))
+                strain_objs[name].estimate_genome_size(strain_objs[name].kmer_cutoff), strain_objs[name].kmer_cutoff))
 
-        for profile in  v.mlst_profiles(mlst_profiles):
+        for profile in strain_objs[name].mlst_profiles(mlst_profiles):
             sys.stdout.write("\tMLST profile: {0}\n".format(profile))
+
+        for tag, ar_result in strain_objs[name].ard_result().iteritems():
+            sys.stdout.write(
+            "\tARD GENE: Gene tag: {0} Covered: {1:.1f}% (size {2}) Species: {3} Ref_id: {4}\n\t\tDescription: {5}\n".format(
+                    ar_result["tag"],
+                    ar_result["percent_covered"] * 100,
+                    ar_result["gene_length"],
+                    ar_result["species"],
+                    ar_result["ref_id"],
+                    ar_result["description"],))
+
     sys.stdout.write("".center(80, "-") + "\n")
+
+    # CREATE KMER REFERENCE MATRIX
+    if kmer_reference is not None:
+        reference_set = load_kmer_reference(kmer_reference)
+        matrix_data, cluster_matrix = calculate_matrix(strain_objs, cpus=cpus, reference_set=reference_set,
+                                                       inverse=False)
+        if output_matrix:
+            strain_keys = strain_objs.keys()
+            strain_kmer_counts = {s_key: len(strain_objs[s_key].kmer_set) for i, s_key in enumerate(strain_keys)}
+            generage_matrix(strain_keys, strain_keys, cluster_matrix, output_prefix + "kmer_reference",
+                            strain_kmer_counts)
+        sys.stdout.write("".center(80, "-") + "\n")
+
+    if inverse_kmer_reference is not None:
+        reference_set = load_kmer_reference(inverse_kmer_reference)
+        matrix_data, cluster_matrix = calculate_matrix(strain_objs, cpus=cpus, reference_set=reference_set,
+                                                       inverse=True)
+        if output_matrix:
+            strain_keys = strain_objs.keys()
+            strain_kmer_counts = {s_key: len(strain_objs[s_key].kmer_set) for i, s_key in enumerate(strain_keys)}
+            generage_matrix(strain_keys, strain_keys, cluster_matrix, output_prefix + "inverse_kmer_reference",
+                            strain_kmer_counts)
+        sys.stdout.write("".center(80, "-") + "\n")
+
+
 
     # CREATE DISTANCE MATRIX
     matrix_data, cluster_matrix = calculate_matrix(strain_objs, cpus=cpus)
@@ -195,20 +238,18 @@ def compare(fq_files=[], gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filter
     if output_matrix:
         sys.stderr.write("generating_figures\n")
         strain_keys = strain_objs.keys()
-        strain_kmer_counts = {s_key : len(strain_objs[s_key].kmer_set) for i, s_key in enumerate(strain_keys)}
+        strain_kmer_counts = {s_key: len(strain_objs[s_key].kmer_set) for i, s_key in enumerate(strain_keys)}
         generage_matrix(strain_keys, strain_keys, cluster_matrix, output_prefix, strain_kmer_counts)
 
-    # write out Pdfs
     if output_histogram:
         produce_histograms(strain_objs, output_prefix)
-
 
     for strain in strain_objs.itervalues():
         strain.clean_tmp_files()
     sys.stderr.write("completed analysis\n")
 
 
-def calculate_matrix(strain_objs, cpus=2):
+def calculate_matrix(strain_objs, cpus=2, reference_set=None, inverse=False):
     """
     Calculates the matrix by pairwise comparison of strains.
 
@@ -225,19 +266,19 @@ def calculate_matrix(strain_objs, cpus=2):
     comparisons_to_make = 0
     similarity_dict = OrderedDict()
     for i in range(len(strain_keys)):
-        similarity_dict.update({strain_keys[i] : {}})
+        similarity_dict.update({strain_keys[i]: {}})
         for j in range(i + 1, len(strain_keys)):
             jobs.append((strain_keys[i], strain_keys[j],))
             comparisons_to_make += 1
 
-    #these set comparisons should thread OK
+    # these set comparisons should thread OK
     if comparisons_to_make < cpus:
         cpus = comparisons_to_make
 
     for cpu in range(cpus):
         strain_1, strain_2 = jobs.pop()
-        p = Process(target=compare_strains, args=(q, strain_objs[strain_1], strain_objs[strain_2]),
-                    name=strain_1 + ":" + strain_2)
+        p = Process(target=compare_strains, args=(q, strain_objs[strain_1], strain_objs[strain_2], reference_set,
+                                                  inverse), name="{0}:{1}".format(strain_1, strain_2))
         current_processes.append(p)
 
     # start the jobs for the correct number of cpus
@@ -250,26 +291,38 @@ def calculate_matrix(strain_objs, cpus=2):
         similarity_dict[strain_1_name].update({strain_2_name: (total, rescue, total_kmers, smallest)})
         num_of_strains_counted += 1
 
-        sys.stderr.write("{0}\tof\t{1}\tcomparisons made {2}:{3}\n".format(num_of_strains_counted, comparisons_to_make,
+        sys.stderr.write("\r{0}\tof\t{1}\tcomparisons made {2}:{3}".format(num_of_strains_counted, comparisons_to_make,
                                                                            strain_1_name, strain_2_name))
+        sys.stderr.flush()
 
         # start next job
         strain_1, strain_2 = jobs.pop()
-        p = Process(target=compare_strains, args=(q, strain_objs[strain_1], strain_objs[strain_2]),
-                     name=strain_1 + ":" + strain_2)
+        p = Process(target=compare_strains, args=(q, strain_objs[strain_1], strain_objs[strain_2], reference_set,
+                                                  inverse), name="{0}:{1}".format(strain_1, strain_2))
         p.start()
     # nothing else to start
     # wait until the queue returns 'ALL THE THINGS'
     while num_of_strains_counted != comparisons_to_make:  # finished processing
         strain_1_name, strain_2_name, total, rescue, total_kmers, smallest = q.get()
-        similarity_dict[strain_1_name].update({strain_2_name: (total, rescue, total_kmers, smallest)})# PAUSES
+        similarity_dict[strain_1_name].update({strain_2_name: (total, rescue, total_kmers, smallest)})  # PAUSES
         num_of_strains_counted += 1
-        sys.stderr.write("{0}\tof\t{1}\tcomparisons made {2}:{3}\n".format(num_of_strains_counted, comparisons_to_make,
-                                                                       strain_1_name, strain_2_name))
+        sys.stderr.write("\r{0}\tof\t{1}\tcomparisons made {2}:{3}".format(num_of_strains_counted, comparisons_to_make,
+                                                                           strain_1_name, strain_2_name))
+        if num_of_strains_counted != comparisons_to_make:
+            sys.stderr.flush()
+        else:
+            sys.stderr.write("\n")
+
     sys.stdout.write("".center(80, "-") + "\n")
     q.close()
+    
 
     # PRINT SIMILARITY TABlE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if reference_set is not None:
+        if inverse:
+            sys.stdout.write("[INVERSE KMER REFERENCE]\n")
+        else:
+            sys.stdout.write("[KMER REFERENCE]\n")
     sys.stdout.write("[SIMILARITY TABLE]\n")
     delimeter = ","
     _str = delimeter + delimeter.join(strain_keys) + "\n"
@@ -319,7 +372,7 @@ def calculate_matrix(strain_objs, cpus=2):
     return matrix_data, matrix_data_cluster
 
 
-def compare_strains(q, strain_1, strain_2 ):
+def compare_strains(q, strain_1, strain_2, reference_set=None, inverse=False):
     """
     place strain comparsion in a queue
 
@@ -328,8 +381,9 @@ def compare_strains(q, strain_1, strain_2 ):
     :param strain_2:
     :return: None
     """
-    q.put(strain_1.compare_to(strain_2))
+    q.put(strain_1.compare_to(strain_2, reference_set=reference_set, inverse=inverse))
     return
+
 
 def filter_coverage(strain_objs, cpus=2):
     """
@@ -343,11 +397,11 @@ def filter_coverage(strain_objs, cpus=2):
     q = Queue()
     jobs = []
     current_processes = []
-    num_of_strains_filtered = 0 # counter
+    num_of_strains_filtered = 0  # counter
 
     strain_keys = strain_objs.keys()
     for i in range(len(strain_keys)):
-        jobs.append(strain_keys[i]) # holds the label for each strain
+        jobs.append(strain_keys[i])  # holds the label for each strain
 
     # reset the cpus if they are set too high
     if len(jobs) < cpus:
@@ -396,7 +450,8 @@ def filter_coverage(strain_objs, cpus=2):
     q.close()
     return strain_objs
 
-def filter_strains(q, strain ):
+
+def filter_strains(q, strain):
     """
     Places filtering into queue
 
@@ -406,3 +461,57 @@ def filter_strains(q, strain ):
     """
     q.put(strain.filter())
     return
+
+
+def load_kmer_reference(kmer_reference):
+    reference_set = set([])
+    for i in open(kmer_reference):
+        if i[0] != ">":
+            reference_set.add(i.strip())
+    return reference_set
+
+
+def compare_ard(strain_objs, kmer_size=31, coverage_cutoff=.50):
+    from Bio import SeqIO
+    import jellyfish
+
+    _p = "/home/ksimmon/reference/ard/"
+    sys.stderr.write("Retrieving antibiotic resistance genes\n")
+
+    descriptions = {}
+    for i in open(_p + "categories.txt"):
+        v = i.strip().split("\t")
+        name = ".".join(v[0].split(".")[:-1])
+        descriptions.update({name : v})
+
+    aro_tags = {}
+    for i in open(_p + "AROtags.txt"):
+        v = i.strip().split("\t")
+        #print v
+        aro_tags.update({v[2]:v[1]})
+    count = 0
+
+    num_of_sequences = len([i.name for i in SeqIO.parse(_p + "ARmeta-genes.fa", "fasta")])
+    for s in SeqIO.parse(_p + "ARmeta-genes.fa", "fasta"):
+        count += 1
+        sys.stderr.write("\rAnalyzed {0} of {1} antibiotic resistant genes".format(count, num_of_sequences))
+        if count != num_of_sequences:
+            sys.stderr.flush()
+        else:
+            sys.stderr.write("\n")
+
+        id =  s.description.split(" ")[0]
+        species = s.description[s.description.rfind("[") + 1:s.description.rfind("]")]
+        aro_tag = [i.split(" ")[0] for i in s.description.split(". ") if "ARO:" in i and "ARO:1000001" not in i]
+        #print id, species, descriptions[id][1], ",".join([aro_tags[tag] for tag in aro_tag])
+        for j in range(0, len(s.seq) - kmer_size + 1):
+            kmer = s.seq[j : j + kmer_size]
+            mer = jellyfish.MerDNA(str(kmer))
+            mer.canonicalize()
+            for label, so in strain_objs.iteritems():
+                if id in so.ard:
+                    so.ard[id][0].append(so.qf[mer])
+                else:
+                    so.ard.update({id : ([so.qf[mer]], species, descriptions[id][1],
+                                                [aro_tags[tag] for tag in aro_tag] ) })
+    return strain_objs

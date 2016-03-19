@@ -29,54 +29,10 @@ def arguments():
 
     subparsers = parser.add_subparsers(help='sub-command help', dest='subparser_name', title="subcommands")
 
-    # parser_query = subparsers.add_parser('compare', help='query an NM or GENE in the transcript db', )
-    #
-    # parser_query.add_argument("-c", "--cutoff",
-    #                           help="The number of kmers to analyze [Default = None (e.g analyze all kmers)]", type=int,
-    #                           default=None)
-    #
-    # parser_query.add_argument("--coverage_cutoff",
-    #                           help="percent of genome coverage to set kmer filters [DEFAULT .20 if coverage is 30 " +
-    #                                "[(30 * .20) = 6] kmers with a count < 5 will be ignored for cooresponding strain",
-    #                           type=float, default=.15)
-    #
-    # parser_query.add_argument("-t", "--cpus",
-    #                           help="The number of cpus to use when counting kmers in strains [Default == 2]", type=int,
-    #                           default=2)
-    #
-    # parser_query.add_argument("--no_kmer_filtering", help="Do not filter kmers based on coverage", action="store_true",
-    #                           default=False)
-    #
-    # parser_query.add_argument("-k", "--kmer_reference",
-    #                           help="supplement use kmer reference set for comparison (e.g. plasmid, core genome, " +
-    #                                "pan genome kmers)", type=str, default=None, )
-    #
-    # parser_query.add_argument("-r", "--inverse_kmer_reference",
-    #                           help="Use kmers to create similarity matrix not in supplied reference set (e.g. " +
-    #                                "plasmid, core genome, pan genome kmers)",
-    #                           type=str, default=None, )
-    #
-    # parser_query.add_argument("--do_not_output_histograms",
-    #                           help="This will prevent the output of the PDF files containing the histograms",
-    #                           default=True, action="store_false")
-    #
-    # parser_query.add_argument("--do_not_output_matrix",
-    #                           help="This will prevent the output of the PDF files containing the matrix", default=True,
-    #                           action="store_false")
-    #
-    # parser_query.add_argument("--no_pdfs", help="Output will only goto stdout", default=False, action="store_true")
-    #
-    # parser_query.add_argument("-o", "--output_prefix", help="appends a prefix to the output files", default="")
-    #
-    # parser_query.add_argument('jf_files', nargs='+', help='jellyfish files for each strain')
 
     subparsers.add_parser('update_mlst', help='update mlst resources', )
 
     parser_fastq = subparsers.add_parser('compare', help='compare strains', )
-
-    # parser_fastq.add_argument("-c", "--cutoff",
-    #                           help="The number of kmers to analyze [Default = None (e.g analyze all kmers)]", type=int,
-    #                           default=None)
 
     parser_fastq.add_argument("--coverage_cutoff",
                               help="percent of genome coverage to set kmer filters [DEFAULT .20 if coverage is 30 " +
@@ -94,11 +50,11 @@ def arguments():
 
     parser_fastq.add_argument("-k", "--kmer_reference",
                               help="supplement use kmer reference set for comparison (e.g. plasmid, core genome, " +
-                                   "pan genome kmers)", type=str, default=None, )
+                                   "pan genome kmers) in fasta_format", type=str, default=None, )
 
     parser_fastq.add_argument("-r", "--inverse_kmer_reference",
                               help="Use kmers to create similarity matrix not in supplied reference set (e.g. " +
-                                   "plasmid, core genome, pan genome kmers)",
+                                   "plasmid, core genome, pan genome kmers) in fastq format",
                               type=str, default=None, )
 
     parser_fastq.add_argument("--do_not_output_histograms",
@@ -129,22 +85,6 @@ def arguments():
 
 def main():
     args = arguments()
-
-    # if args.subparser_name == "compare":
-    #     # set output of pdfs to false
-    #     if args.no_pdfs:
-    #         args.do_not_output_histogram = False
-    #         args.do_not_output_matrix = False
-    #
-    #     compare_strains(jf_files=args.jf_files,
-    #                     no_kmer_filtering=args.no_kmer_filtering,
-    #                     cutoff=args.cutoff,
-    #                     cpus=args.cpus, coverage_cutoff=args.coverage_cutoff,
-    #                     kmer_reference=args.kmer_reference,
-    #                     inverse_kmer_reference=args.inverse_kmer_reference,
-    #                     output_histogram=args.do_not_output_histograms,
-    #                     output_matrix=args.do_not_output_matrix,
-    #                     output_prefix=args.output_prefix,)
 
     if args.subparser_name == "compare":
         if args.no_pdfs:

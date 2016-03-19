@@ -89,7 +89,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
         vmin = np.min(D)
 
     im = axmatrix.matshow(D, aspect='auto', origin='lower', cmap=pylab.cm.RdYlGn,
-                         interpolation='nearest',vmin=vmin, vmax=100,)
+                         interpolation='nearest',vmin=vmin, vmax=100, )
 
     # minor hacking to create the minor ticks, this is need to overlay the grid
     # probably a little bit of over kill but I think it better shows each grids as a distinct observartion
@@ -104,13 +104,14 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
                             strain_lengths[x_labels[i]]) for i in idx2 ], minor=False, multialignment='center',
                              linespacing=1)
 
+
     axmatrix.xaxis.set_label_position("top")
     pylab.xticks(rotation=-90, fontsize=6,)
 
     #make sure minor ticks are one
     axmatrix.tick_params(axis='both', which='minor', right='on', top='on', bottom='on', color="w")
 
-    #turn of the major ticks
+    #turn off the major ticks
     axmatrix.tick_params(axis='both', which='major', right='off', top='off', bottom='off', left='off')
 
     #modify the y tick and labels
@@ -153,6 +154,8 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
             #annotate this mother
             axmatrix.annotate(val, xy=(x, y), horizontalalignment='center', verticalalignment='center',
                               fontsize=font_size, color=_color )
+
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #color scale bar
     axcolor = fig.add_axes([0.88,0.1,0.02,0.6], frame_on=False)

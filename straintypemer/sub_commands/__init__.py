@@ -15,11 +15,13 @@ except ImportError:
     ImportError.message += "Jellyfish is not installed correctly make sure the python bindings are installed\n"
     raise ImportError
 
+
 class jf_object:
     """
     Contains information about the jellyfish db for a single strain
     """
     jellyfish_path = "jellyfish"
+
     def __init__(self, name, path):
         """
         initialize a jelly
@@ -43,6 +45,12 @@ class jf_object:
         self.kmer_set = set([])
         self.filtered_jf_file = "/tmp/tmp_filtered_{0}.jf".format(''.join(random.choice(string.ascii_uppercase)
                                                                           for i in range(8)))
+        self.ard = {}
+        self.unique_kmers = None
+        self.distinct_kmers = None
+        self.total_kmers = None
+        self.max_count = None
+
         self.qf = None
         self.rf = None
 
@@ -80,9 +88,8 @@ class jf_object:
             if freq in _histo:
                 _histo[freq] += count
             else:
-                _histo.update({freq : count })
+                _histo.update({freq: count})
         return _histo
-
 
     def get_estimate_coverage(self):
         """Estimates the coverage for kmers count > 3 times"""
@@ -91,7 +98,8 @@ class jf_object:
                             float(np.sum(self.histo.values()[3:])) == 0:
                 _cov = 1
             else:
-                _cov = np.sum([float(i) * self.histo[i] for i in self.histo if i >= 3]) / float(np.sum(self.histo.values()[3:]))
+                _cov = np.sum([float(i) * self.histo[i] for i in self.histo if i >= 3]) / float(np.sum(
+                        self.histo.values()[3:]))
         except:
             _cov = 1
         return _cov
@@ -102,8 +110,7 @@ class jf_object:
         :param coverage_cutoff: the count at which kmers are excluded
         :return: the number of distinct kmers in the strain above cutoff
         """
-        return  (np.sum(self.histo.values()[int(coverage_cutoff):]))
-
+        return np.sum(self.histo.values()[int(coverage_cutoff):])
 
     def set_cutoff(self, cutoff):
         """
@@ -111,9 +118,8 @@ class jf_object:
         :param cutoff: int with cutoff value
         :return: None
         """
-        self.kmer_cutoff =  cutoff
+        self.kmer_cutoff = cutoff
         return
-
 
     def filter(self):
         """
@@ -136,8 +142,8 @@ class jf_object:
             self.__create_set()
         else:
             dummy_jf_file = pkg_resources.resource_filename('straintypemer', 'data/dummy_A.jf')
-            subprocess.check_call(["jellyfish", "merge", "-L", str(int(self.kmer_cutoff) + 1),
-                                        "-o", self.filtered_jf_file, self.path, dummy_jf_file],)
+            subprocess.check_call(["jellyfish", "merge", "-L", str(int(self.kmer_cutoff) + 1), "-o",
+                                   self.filtered_jf_file, self.path, dummy_jf_file],)
 
             self.qf = jellyfish.QueryMerFile(self.filtered_jf_file)
             self.rf = jellyfish.ReadMerFile(self.filtered_jf_file)
@@ -155,7 +161,6 @@ class jf_object:
         self.rf = jellyfish.ReadMerFile(path)
         return None
 
-
     def __str__(self):
         return "Name:\t{0}\n".format(self.name) + \
                "Path:\t{0}\n".format(self.path) + \
@@ -163,44 +168,6 @@ class jf_object:
                "Distinct_kmers\t{0}\n".format(self.distinct_kmers) + \
                "Total_kmers\t{0}\n".format(self.total_kmers) + \
                "Max_Count\t{0}\n".format(self.max_count)
-
-    def get_kmer_count(self, jellyfish_obj, kmer_reference, reverse_kmer_reference, break_point):
-        counter = 0
-        _arr = []
-        k_arr = None
-        r_arr = None
-        self.kmer_reference_count = 0
-        self.reverse_kmer_reference_count = 0
-        self.kmer_count = 0
-
-        if kmer_reference is not None:
-            k_arr = []
-            kmer_reference = jellyfish.QueryMerFile(kmer_reference)
-
-
-        if reverse_kmer_reference is not None:
-            r_arr = []
-            reverse_kmer_reference = jellyfish.QueryMerFile(reverse_kmer_reference)
-
-
-        mer_file = jellyfish.ReadMerFile(jellyfish_obj)
-        for mer, count in mer_file:
-            mer.canonicalize()
-            _arr.append(self.qf[mer])
-
-            if kmer_reference is not None:
-                if kmer_reference[mer] > 0: # kmer in ref
-                    k_arr.append(self.qf[mer])
-
-            if reverse_kmer_reference is not None:
-                if reverse_kmer_reference[mer] == 0: # kmer not in ref
-                    r_arr.append(self.qf[mer])
-
-            counter += 1
-            if break_point is not None and counter >= break_point:
-                break
-        return (self.name, _arr, k_arr, r_arr)
-
 
     def kmer_file(self):
         temp_file = "/tmp/tmp_kmer_{0}".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
@@ -216,20 +183,28 @@ class jf_object:
         for mer, count in self.rf:
             self.kmer_set.add(str(mer))
 
-    def compare_to(self, strain):
+    def compare_to(self, strain, reference_set=None, inverse=False):
+        if reference_set is None:
+            strain_1 = self.kmer_set
+            strain_2 = strain.kmer_set
+        else:
+            if inverse:
+                strain_1 = self.kmer_set.difference(reference_set)
+                strain_2 = strain.kmer_set.difference(reference_set)
+            else:
+                strain_1 = self.kmer_set.intersection(reference_set)
+                strain_2 = strain.kmer_set.intersection(reference_set)
 
-        intersection = float(len(self.kmer_set.intersection(strain.kmer_set)))
-        denom = ((len(self.kmer_set) - intersection) + (len(strain.kmer_set) - intersection)) + intersection
+        intersection = float(len(strain_1.intersection(strain_2)))
+        denom = ((len(strain_1) - intersection) + (len(strain_2) - intersection)) + intersection
 
-        total =  intersection / denom * 100.0
-        smallest_count = float(len(self.kmer_set))
-        if len(strain.kmer_set) < smallest_count:
-            smallest_count = len(strain.kmer_set)
+        total = intersection / denom * 100.0
+        smallest_count = float(len(strain_1))
+        if len(strain_2) < smallest_count:
+            smallest_count = len(strain_2)
 
-        rescue = (len(self.kmer_set.intersection(strain.kmer_set)) * 2.0) / (smallest_count * 2.0) * 100.0
-        return (self.name, strain.name, total, rescue, denom , smallest_count)
-
-
+        rescue = (len(strain_1.intersection(strain_2)) * 2.0) / (smallest_count * 2.0) * 100.0
+        return self.name, strain.name, total, rescue, denom, smallest_count
 
     def clean_tmp_files(self):
         try:
@@ -248,13 +223,17 @@ class jf_object:
 
         matching_sequences = OrderedDict()
         for species, _d in mlst_profiles.iteritems():
+            # print species
+            matching_sequences.update({species: {}})
             for i, gene in enumerate(_d["GENE_ORDER"]):
-                matching_sequences.update({gene : []})
+                matching_sequences[species].update({gene: []})
                 for profile_number, profile in _d["GENES"][gene].iteritems():
                     if len(profile) == len(profile.intersection(self.kmer_set)):
-                        matching_sequences[gene].append(profile_number)
+                        # print 'matched'
+                        matching_sequences[species][gene].append(profile_number)
 
-            st_keys =  [":".join(t) for t in list(itertools.product(*matching_sequences.values()))]
+            st_keys = [":".join(t) for t in list(itertools.product(*matching_sequences[species].values()))]
+            # print st_keys
             for k in st_keys:
                 if k in _d["ST"]:
                     st = _d["ST"][k]
@@ -262,3 +241,28 @@ class jf_object:
                     st = 'NONE'
                 results.append("{0}\tST: {2}\tprofile: {1} [{3}]".format(species, k, st, ":".join(_d["GENE_ORDER"])))
         return results
+
+    def ard_result(self, coverage_cutoff=.50):
+        _out = {}
+        for id, result in self.ard.iteritems():
+            counts = np.array(result[0]).clip(0,1)
+            gene_length = len(counts)
+            kmers_covered = float(np.sum(counts))
+            per_covered = kmers_covered / gene_length
+            tag = ";".join(result[3])
+            if per_covered >= coverage_cutoff:
+                if tag not in _out:
+                    _out.update({ tag :{"percent_covered": per_covered,
+                             "gene_length": gene_length,
+                             "ref_id": id,
+                             "tag": tag,
+                             "description": result[2],
+                             "species": result[1] }
+                    })
+                else:
+                    if per_covered > _out[tag]["percent_covered"] and kmers_covered > _out[tag]["gene_length"]:
+                        _out[tag]["percent_covered"] = per_covered
+                        _out[tag]["gene_length"] = gene_length
+                        _out[tag]["ref_id"] = id
+                        _out[tag]["species"] = result[1]
+        return _out
