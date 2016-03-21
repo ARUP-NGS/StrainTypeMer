@@ -278,10 +278,6 @@ def produce_histograms(jf_objects, output_prefix):
             ax.set_ylabel("kmers with a given count", fontsize=12)
 
         ax.set_xlabel("kmer frequency", fontsize=12)
-
-
-
-
         pdf.savefig(transparent=True)
         pylab.close()
     pdf.close()

@@ -2,15 +2,16 @@ import os
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
 
-mlst_urls = {'Acinetobacter baumannii Oxf': [
-    'http://pubmlst.org/data/profiles/abaumannii.txt',
-    'http://pubmlst.org/data/alleles/abaumannii/Oxf_gltA.tfa',
-    'http://pubmlst.org/data/alleles/abaumannii/Oxf_gyrB.tfa',
-    'http://pubmlst.org/data/alleles/abaumannii/Oxf_gdhB.tfa',
-    'http://pubmlst.org/data/alleles/abaumannii/Oxf_recA.tfa',
-    'http://pubmlst.org/data/alleles/abaumannii/Oxf_cpn60.tfa',
-    'http://pubmlst.org/data/alleles/abaumannii/Oxf_gpi.tfa',
-    'http://pubmlst.org/data/alleles/abaumannii/Oxf_rpoD.tfa',
+mlst_urls = {
+    'Acinetobacter baumannii Oxf': [
+        'http://pubmlst.org/data/profiles/abaumannii.txt',
+        'http://pubmlst.org/data/alleles/abaumannii/Oxf_gltA.tfa',
+        'http://pubmlst.org/data/alleles/abaumannii/Oxf_gyrB.tfa',
+        'http://pubmlst.org/data/alleles/abaumannii/Oxf_gdhB.tfa',
+        'http://pubmlst.org/data/alleles/abaumannii/Oxf_recA.tfa',
+        'http://pubmlst.org/data/alleles/abaumannii/Oxf_cpn60.tfa',
+        'http://pubmlst.org/data/alleles/abaumannii/Oxf_gpi.tfa',
+        'http://pubmlst.org/data/alleles/abaumannii/Oxf_rpoD.tfa',
     ],
     'Acinetobacter baumannii Pas': [
         'http://pubmlst.org/data/profiles/abaumannii_2.txt',
@@ -63,4 +64,3 @@ mlst_urls = {'Acinetobacter baumannii Oxf': [
         'http://pubmlst.org/data/alleles/senterica/thrA.tfa',
     ],
 }
-

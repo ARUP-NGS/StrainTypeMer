@@ -109,14 +109,13 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
         else:
             r = subprocess.check_call(["jellyfish", "count", "-Q", qual, "-L", "3", "-m", "31", "-s", hash_size, "-t",
                                    str(cpus), "-C", "-o", jf_file, files[0], f2], )
-            print r
         _results.append((files[2], jf_file, files[-1]))
     return _results
 
 
 def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filter=0, output_matrix=True,
             output_histogram=True, output_prefix="", no_kmer_filtering=False, kmer_reference=None,
-            inverse_kmer_reference=None,):
+            inverse_kmer_reference=None, include_ard_comparsion=False, pairwise_kmer_filtering=True):
     """
     The is the entry point for this subcommand:  compares multiple files
 
@@ -178,7 +177,8 @@ def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filt
         mlst_profiles = cPickle.load(open(mlst_path))
 
     # antibiotic_resistance_genes
-    strain_objs = compare_ard(strain_objs)
+    if include_ard_comparsion:
+        strain_objs = compare_ard(strain_objs)
 
     # Print out strain stats
     sys.stdout.write(" STRAIN STATS ".center(80, "-") + "\n")
@@ -372,7 +372,7 @@ def calculate_matrix(strain_objs, cpus=2, reference_set=None, inverse=False):
     return matrix_data, matrix_data_cluster
 
 
-def compare_strains(q, strain_1, strain_2, reference_set=None, inverse=False):
+def compare_strains(q, strain_1, strain_2, reference_set=None, inverse=False, pairwise_kmer_filtering=True):
     """
     place strain comparsion in a queue
 
@@ -381,8 +381,10 @@ def compare_strains(q, strain_1, strain_2, reference_set=None, inverse=False):
     :param strain_2:
     :return: None
     """
-    strain_1.compare_to_show_differences( strain_2)
-    q.put(strain_1.compare_to(strain_2, reference_set=reference_set, inverse=inverse))
+    if pairwise_kmer_filtering:
+        q.put(strain_1.compare_to_show_differences(strain_2))
+    else:
+        q.put(strain_1.compare_to(strain_2, reference_set=reference_set, inverse=inverse))
     return
 
 
@@ -476,7 +478,7 @@ def compare_ard(strain_objs, kmer_size=31, coverage_cutoff=.50):
     from Bio import SeqIO
     import jellyfish
 
-    _p = "/Users/ksimmon/Box Sync/ARUP/strainTypeMer_resources/ard/"
+    _p = "/home/ksimmon/reference/ard/"
     sys.stderr.write("Retrieving antibiotic resistance genes\n")
 
     descriptions = {}
