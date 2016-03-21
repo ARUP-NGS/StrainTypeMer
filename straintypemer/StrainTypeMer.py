@@ -46,7 +46,7 @@ def arguments():
     parser_fastq.add_argument("--no_kmer_filtering", help="Do not filter kmers based on coverage", action="store_true",
                               default=False)
 
-    parser_fastq.add_argument("--qual_score", help="the phred score to filter bases", default=0, type=int)
+    parser_fastq.add_argument("-q", "--qual_score", help="the phred score to filter bases", default=0, type=int)
 
     parser_fastq.add_argument("-k", "--kmer_reference",
                               help="supplement use kmer reference set for comparison (e.g. plasmid, core genome, " +

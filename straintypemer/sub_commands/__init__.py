@@ -43,14 +43,15 @@ class jf_object:
         self.reverse_kmer_reference_count = 0
         self.kmer_count = 0
         self.kmer_set = set([])
-        self.filtered_jf_file = "/tmp/tmp_filtered_{0}.jf".format(''.join(random.choice(string.ascii_uppercase)
+        self.kmer_archive = set([])
+        self.filtered_jf_file = "/tmp/tmp_filtered_{0}_{1}.jf".format(self.name ,
+                                                                  ''.join(random.choice(string.ascii_uppercase)
                                                                           for i in range(8)))
         self.ard = {}
         self.unique_kmers = None
         self.distinct_kmers = None
         self.total_kmers = None
         self.max_count = None
-
         self.qf = None
         self.rf = None
 
@@ -67,7 +68,6 @@ class jf_object:
         if err != "":
             sys.stderr.write("Failed to retrieve db stats\n JELLYFISH ERROR: {0}\n".format(err))
             raise RuntimeError
-
         out = out.split("\n")
         self.unique_kmers = int(out[0].split(" ")[-1])
         self.distinct_kmers = int(out[1].split(" ")[-1])
@@ -169,19 +169,22 @@ class jf_object:
                "Total_kmers\t{0}\n".format(self.total_kmers) + \
                "Max_Count\t{0}\n".format(self.max_count)
 
-    def kmer_file(self):
-        temp_file = "/tmp/tmp_kmer_{0}".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
-        jf_temp_file = temp_file + ".jf"
-        try:
-            cmd = "jellyfish dump -L 11 A1A*all*.jf | jellyfish count -m 31 -s 2G -t 6 /dev/fd/0 -o " + jf_temp_file
-            subprocess.Popen(cmd, shell=True)
-        except:
-            sys.stderr.write("Error in running jellyfish count\n")
-            raise RuntimeError
+    # def kmer_file(self):
+    #     temp_file = "/tmp/tmp_kmer_{0}".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
+    #     jf_temp_file = temp_file + ".jf"
+    #     try:
+    #         cmd = "jellyfish dump -L 11 A1A*all*.jf | jellyfish count -m 31 -s 2G -t 6 /dev/fd/0 -o " + jf_temp_file
+    #         subprocess.Popen(cmd, shell=True)
+    #     except:
+    #         sys.stderr.write("Error in running jellyfish count\n")
+    #         raise RuntimeError
 
     def __create_set(self):
         for mer, count in self.rf:
             self.kmer_set.add(str(mer))
+
+            #the repo strain
+            self.kmer_archive.add(str(mer))
 
     def compare_to(self, strain, reference_set=None, inverse=False):
         if reference_set is None:
@@ -205,6 +208,15 @@ class jf_object:
 
         rescue = (len(strain_1.intersection(strain_2)) * 2.0) / (smallest_count * 2.0) * 100.0
         return self.name, strain.name, total, rescue, denom, smallest_count
+
+    def compare_to_show_differences(self, strain):
+        strain_1 = self.kmer_set
+        strain_2 = strain.kmer_set
+        differences = strain_1.symmetric_difference(strain_2)
+        print len(differences)
+        for i, kmer in enumerate(differences):
+            sys.stdout.write(">{0}\n{1}\n".format(i, kmer))
+        return
 
     def clean_tmp_files(self):
         try:
@@ -242,7 +254,7 @@ class jf_object:
                 results.append("{0}\tST: {2}\tprofile: {1} [{3}]".format(species, k, st, ":".join(_d["GENE_ORDER"])))
         return results
 
-    def ard_result(self, coverage_cutoff=.50):
+    def ard_result(self, coverage_cutoff=0.80):
         _out = {}
         for id, result in self.ard.iteritems():
             counts = np.array(result[0]).clip(0,1)

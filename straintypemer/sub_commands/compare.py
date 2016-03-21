@@ -381,6 +381,7 @@ def compare_strains(q, strain_1, strain_2, reference_set=None, inverse=False):
     :param strain_2:
     :return: None
     """
+    strain_1.compare_to_show_differences( strain_2)
     q.put(strain_1.compare_to(strain_2, reference_set=reference_set, inverse=inverse))
     return
 
@@ -475,7 +476,7 @@ def compare_ard(strain_objs, kmer_size=31, coverage_cutoff=.50):
     from Bio import SeqIO
     import jellyfish
 
-    _p = "/home/ksimmon/reference/ard/"
+    _p = "/Users/ksimmon/Box Sync/ARUP/strainTypeMer_resources/ard/"
     sys.stderr.write("Retrieving antibiotic resistance genes\n")
 
     descriptions = {}
