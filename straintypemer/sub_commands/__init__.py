@@ -8,6 +8,8 @@ import random
 import string
 import itertools
 import pkg_resources
+from itertools import groupby
+from collections import Counter
 
 try:
     import jellyfish
@@ -198,6 +200,7 @@ class jf_object:
                 strain_1 = self.kmer_set.intersection(reference_set)
                 strain_2 = strain.kmer_set.intersection(reference_set)
 
+
         intersection = float(len(strain_1.intersection(strain_2)))
         denom = ((len(strain_1) - intersection) + (len(strain_2) - intersection)) + intersection
 
@@ -209,15 +212,44 @@ class jf_object:
         rescue = (len(strain_1.intersection(strain_2)) * 2.0) / (smallest_count * 2.0) * 100.0
         return self.name, strain.name, total, rescue, denom, smallest_count
 
-    def compare_to_show_differences(self, strain, complexity_cutoff=12, coverage_cutoff=3):
-        from itertools import groupby
-        from collections import Counter
+    def compare_to_and_filter(self, strain, complexity_cutoff=12, coverage_cutoff=3,
+                              reference_set=None, inverse=False, filtering_cutoff=90):
 
-        strain_1 = self.kmer_set
-        strain_2 = strain.kmer_set
+
+        if reference_set is None:
+            strain_1 = self.kmer_set
+            strain_2 = strain.kmer_set
+        else:
+            if inverse:
+                strain_1 = self.kmer_set.difference(reference_set)
+                strain_2 = strain.kmer_set.difference(reference_set)
+            else:
+                strain_1 = self.kmer_set.intersection(reference_set)
+                strain_2 = strain.kmer_set.intersection(reference_set)
+
+
+        intersection = float(len(strain_1.intersection(strain_2)))
+        denom = ((len(strain_1) - intersection) + (len(strain_2) - intersection)) + intersection
+
+        total = intersection / denom * 100.0
+        smallest_count = float(len(strain_1))
+        strain_1_smallest = True
+        if len(strain_2) < smallest_count:
+            smallest_count = len(strain_2)
+            strain_1_smallest = False
+
+        rescue_numerator = float(len(strain_1.intersection(strain_2)))
+        rescue = rescue_numerator / (smallest_count) * 100.0
+        #return self.name, strain.name, total, rescue, denom, smallest_count
+        if total < filtering_cutoff:
+            return self.name, strain.name, total, rescue, denom, smallest_count
+
+
+        # get the difference kmers
         differences_1 = strain_1.difference(strain_2)
         differences_2 = strain_2.difference(strain_1)
-        differences = differences_1.union(differences_2)
+        differences = strain_1.symmetric_difference(strain_2)
+        # differences = differences_1.union(differences_2) # combined
 
         complexity_count = 0
         within_1 = 0
@@ -229,86 +261,86 @@ class jf_object:
         kept_1 = 0
         kept_2 = 0
         nucleotide_skew = 0
+        filtered_1 = 0
+        filtered_2 = 0
 
         for i, kmer in enumerate(differences):
-            filter_kmer = False
+            is_filtered_kmer = False
             mer = jellyfish.MerDNA(kmer)
             mer.canonicalize()
             s1_count = int(self.qf[mer])
             s2_count = int(strain.qf[mer])
 
-            s1_out = "{0}:n={1} [cutoff={2}]".format(self.name, s1_count, self.kmer_cutoff)
-            s2_out = "{0}:n={1} [cutoff={2}]".format(strain.name, s2_count, strain.kmer_cutoff)
+            # s1_out = "{0}:n={1} [cutoff={2}]".format(self.name, s1_count, self.kmer_cutoff)
+            # s2_out = "{0}:n={1} [cutoff={2}]".format(strain.name, s2_count, strain.kmer_cutoff)
 
             if s1_count > self.coverage * coverage_cutoff:
-                # print s1_count
                 coverage_100 += 1
-                filter_kmer = True
+                is_filtered_kmer = True
             elif s2_count > strain.coverage * coverage_cutoff:
-                # print s2_count
                 coverage_100 += 1
-                filter_kmer = True
+                is_filtered_kmer = True
 
             if s2_count == 0:
                 if  s1_count - int(self.kmer_cutoff)  == 1:
                     within_1 += 1
                     within_2 += 1
                     within_3 += 1
-                    filter_kmer = True
+                    is_filtered_kmer = True
                 elif s1_count - int(self.kmer_cutoff)  == 2:
                     #within_1 += 1
                     within_2 += 1
                     within_3 += 1
-                    filter_kmer = True
+                    is_filtered_kmer = True
                 elif s1_count - int(self.kmer_cutoff)  == 3:
                     #within_1 += 1
                     #within_2 += 1
                     within_3 += 1
-                    filter_kmer = True
+                    is_filtered_kmer = True
             else:
                 if  s2_count - int(strain.kmer_cutoff)  == 1:
                     within_1 += 1
                     within_2 += 1
                     within_3 += 1
-                    filter_kmer = True
+                    is_filtered_kmer = True
                 elif s2_count - int(strain.kmer_cutoff)  == 2:
                     #within_1 += 1
                     within_2 += 1
                     within_3 += 1
-                    filter_kmer = True
+                    is_filtered_kmer = True
                 elif s2_count - int(strain.kmer_cutoff)  == 3:
                     #within_1 += 1
                     #within_2 += 1
                     within_3 += 1
-                    filter_kmer = True
+                    is_filtered_kmer = True
 
 
             complexity = [[k, len(list(g))] for k, g in groupby(kmer)]
             complexity = sorted(complexity,key=lambda l:l[1], reverse=True)
-
             complexity = sum([v for g, v in complexity[:3]])
-            #complexity = complexity[0][1] + complexity[1][1] + complexity[2][1]
 
             complexity_char = sorted(Counter(kmer).values(), reverse=True)
             if complexity_char[0] > (31.0 / 2):
                 nucleotide_skew += 1
-                filter_kmer = True
+                is_filtered_kmer = True
 
             if complexity > complexity_cutoff:
-                filter_kmer = True
+                is_filtered_kmer = True
                 complexity_count += 1
 
-            if filter_kmer:
+            if is_filtered_kmer:
                 counter_filtered += 1
-
-            if filter_kmer is False:
+                if s1_count == 0:
+                    filtered_2 +=1
+                else:
+                    filtered_1 +=1
+            else: # is_filtered_kmer is False:
                 counter_not_filtered += 1
                 if s1_count == 0:
                     kept_2 += 1
-                    strain.kmer_set.remove(kmer)
                 else:
                     kept_1 += 1
-                    self.kmer_set.remove(kmer)
+
 
                 #sys.stdout.write(">{0}\t{1}\t{2}\tcomplexity:{3}\n{4}\n".format(
                 #    counter_not_filtered, s1_out, s2_out, complexity, kmer))
@@ -326,7 +358,17 @@ class jf_object:
         print "kmers filter = {0}\tkmers retained = {1}".format(counter_filtered, counter_not_filtered)
         print "kmers with excessive coverage [{0}X]= {1}".format(coverage_cutoff ,coverage_100)
         print
-        return self.compare_to(strain, reference_set=None, inverse=False)
+        denom -= counter_filtered
+        if strain_1_smallest:
+            smallest_count -= filtered_1
+        else:
+            smallest_count -= filtered_2
+        total = intersection / denom * 100.0
+        rescue = rescue_numerator / (smallest_count) * 100.0
+        return self.name, strain.name, total, rescue, denom, smallest_count
+
+
+
 
     def clean_tmp_files(self):
         try:

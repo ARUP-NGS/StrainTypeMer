@@ -72,6 +72,10 @@ def arguments():
     parser_fastq.add_argument("-gz", "--gzipped", help="flag to indicate fastq_files are gzipped [Default False]",
                               action="store_true", default=False)
 
+    parser_fastq.add_argument("-pwf", "--pairwise_kmer_filter",
+                                help="evaluate non-shared kmers in closely related strains",
+                                action="store_true", default=False)
+
     parser_fastq.add_argument('fq_files', nargs='+',
                               help='fastq files for each strain (fq1 OR fq1;label OR fq1,fq2;label will '
                                                           'be matching string of the two files OR fq1,fq2;label'
@@ -99,6 +103,7 @@ def main():
                 output_prefix=args.output_prefix,
                 kmer_reference=args.kmer_reference,
                 inverse_kmer_reference=args.inverse_kmer_reference,
+                pairwise_kmer_filtering=args.pairwise_kmer_filter,
                 )
 
     elif args.subparser_name == "update_mlst":

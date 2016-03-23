@@ -115,7 +115,7 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
 
 def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filter=0, output_matrix=True,
             output_histogram=True, output_prefix="", no_kmer_filtering=False, kmer_reference=None,
-            inverse_kmer_reference=None, include_ard_comparsion=False, pairwise_kmer_filtering=True):
+            inverse_kmer_reference=None, include_ard_comparsion=False, pairwise_kmer_filtering=False):
     """
     The is the entry point for this subcommand:  compares multiple files
 
@@ -211,7 +211,7 @@ def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filt
     if kmer_reference is not None:
         reference_set = load_kmer_reference(kmer_reference)
         matrix_data, cluster_matrix = calculate_matrix(strain_objs, cpus=cpus, reference_set=reference_set,
-                                                       inverse=False)
+                                                       inverse=False, pairwise_kmer_filtering=pairwise_kmer_filtering)
         if output_matrix:
             strain_keys = strain_objs.keys()
             strain_kmer_counts = {s_key: len(strain_objs[s_key].kmer_set) for i, s_key in enumerate(strain_keys)}
@@ -222,7 +222,7 @@ def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filt
     if inverse_kmer_reference is not None:
         reference_set = load_kmer_reference(inverse_kmer_reference)
         matrix_data, cluster_matrix = calculate_matrix(strain_objs, cpus=cpus, reference_set=reference_set,
-                                                       inverse=True)
+                                                       inverse=True, pairwise_kmer_filtering=pairwise_kmer_filtering)
         if output_matrix:
             strain_keys = strain_objs.keys()
             strain_kmer_counts = {s_key: len(strain_objs[s_key].kmer_set) for i, s_key in enumerate(strain_keys)}
@@ -233,7 +233,8 @@ def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filt
 
 
     # CREATE DISTANCE MATRIX
-    matrix_data, cluster_matrix = calculate_matrix(strain_objs, cpus=cpus)
+    matrix_data, cluster_matrix = calculate_matrix(strain_objs, cpus=cpus,
+                                                   pairwise_kmer_filtering=pairwise_kmer_filtering)
     sys.stdout.write("".center(80, "-") + "\n")
     if output_matrix:
         sys.stderr.write("generating_figures\n")
@@ -249,7 +250,7 @@ def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filt
     sys.stderr.write("completed analysis\n")
 
 
-def calculate_matrix(strain_objs, cpus=2, reference_set=None, inverse=False):
+def calculate_matrix(strain_objs, cpus=2, reference_set=None, inverse=False, pairwise_kmer_filtering=False):
     """
     Calculates the matrix by pairwise comparison of strains.
 
@@ -278,7 +279,7 @@ def calculate_matrix(strain_objs, cpus=2, reference_set=None, inverse=False):
     for cpu in range(cpus):
         strain_1, strain_2 = jobs.pop()
         p = Process(target=compare_strains, args=(q, strain_objs[strain_1], strain_objs[strain_2], reference_set,
-                                                  inverse), name="{0}:{1}".format(strain_1, strain_2))
+                                                  inverse, pairwise_kmer_filtering), name="{0}:{1}".format(strain_1, strain_2))
         current_processes.append(p)
 
     # start the jobs for the correct number of cpus
@@ -298,7 +299,7 @@ def calculate_matrix(strain_objs, cpus=2, reference_set=None, inverse=False):
         # start next job
         strain_1, strain_2 = jobs.pop()
         p = Process(target=compare_strains, args=(q, strain_objs[strain_1], strain_objs[strain_2], reference_set,
-                                                  inverse), name="{0}:{1}".format(strain_1, strain_2))
+                                                  inverse, pairwise_kmer_filtering), name="{0}:{1}".format(strain_1, strain_2))
         p.start()
     # nothing else to start
     # wait until the queue returns 'ALL THE THINGS'
@@ -338,16 +339,16 @@ def calculate_matrix(strain_objs, cpus=2, reference_set=None, inverse=False):
                 matrix_data[i].append(100)
                 matrix_data_cluster[i].append(100)
                 # _str += "1.000" + delimeter
-                _str += "{:.1f}{:s}".format(100, delimeter)
+                _str += "{:.2f}{:s}".format(100, delimeter)
             elif i < j:
                 matrix_data[i].append(similarity_dict[strain_keys[i]][strain_keys[j]][0])
                 matrix_data_cluster[i].append(similarity_dict[strain_keys[i]][strain_keys[j]][0])
-                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][0], delimeter)
+                _str += "{:.2f}{:s}".format(similarity_dict[strain_keys[i]][strain_keys[j]][0], delimeter)
             elif i > j:
                 matrix_data[i].append(similarity_dict[strain_keys[j]][strain_keys[i]][1])
                 matrix_data_cluster[i].append(similarity_dict[strain_keys[j]][strain_keys[i]][0])
 
-                _str += "{:.1f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][1], delimeter)
+                _str += "{:.2f}{:s}".format(similarity_dict[strain_keys[j]][strain_keys[i]][1], delimeter)
         _str = _str[:-1] + "\n"
     sys.stdout.write(_str)
     sys.stdout.write("[SIMILARITY TABLE END]\n")
@@ -382,7 +383,8 @@ def compare_strains(q, strain_1, strain_2, reference_set=None, inverse=False, pa
     :return: None
     """
     if pairwise_kmer_filtering:
-        q.put(strain_1.compare_to_show_differences(strain_2))
+        sys.stdout.write("INCLUDING PAIRWISE FILTER\n")
+        q.put(strain_1.compare_to_and_filter(strain_2))
     else:
         q.put(strain_1.compare_to(strain_2, reference_set=reference_set, inverse=inverse))
     return
