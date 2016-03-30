@@ -94,7 +94,8 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
         else:
             sys.stderr.write("\n")
         # create temp file name
-        jf_file = "/tmp/tmp_{0}.jf".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
+        jf_file = "/tmp/tmp_{0}_{1}.jf".format(files[-1], ''.join(random.choice(string.ascii_uppercase)
+                                                                  for i in range(8)))
         # if file2 does not exist change to empty string
         if files[1] is None:
             f2 = ""
@@ -246,7 +247,8 @@ def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filt
         produce_histograms(strain_objs, output_prefix)
 
     for strain in strain_objs.itervalues():
-        strain.clean_tmp_files()
+        pass
+        # strain.clean_tmp_files()
     sys.stderr.write("completed analysis\n")
 
 

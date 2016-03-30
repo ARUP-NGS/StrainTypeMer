@@ -17,6 +17,10 @@ except ImportError:
     ImportError.message += "Jellyfish is not installed correctly make sure the python bindings are installed\n"
     raise ImportError
 
+def rc(sequence):
+    _d = {"A" : "T", "T" : "A", "G" : "C", "C" : "G"}
+    return "".join([_d[s]  for s in reversed(sequence)])
+
 
 class jf_object:
     """
@@ -334,12 +338,17 @@ class jf_object:
                     filtered_2 +=1
                 else:
                     filtered_1 +=1
+
             else: # is_filtered_kmer is False:
                 counter_not_filtered += 1
                 if s1_count == 0:
                     kept_2 += 1
+                    print "strain: 2\tcount: {0}\t{1}|{2}".format(s2_count, kmer, rc(kmer))
+
+
                 else:
-                    kept_1 += 1
+                    kept_1  += 1
+                    print "strain: 1\tcount: {0}\t{1}|{2}".format(s1_count, kmer, rc(kmer))
 
 
                 #sys.stdout.write(">{0}\t{1}\t{2}\tcomplexity:{3}\n{4}\n".format(
