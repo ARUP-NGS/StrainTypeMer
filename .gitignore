@@ -1,2 +1,9 @@
 *.pyc
 *.idea*
+data/
+*.tfa
+*.txt
+dist/
+build
+straintypemer.egg-info
+*.pdf
