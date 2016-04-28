@@ -94,7 +94,7 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
         else:
             sys.stderr.write("\n")
         # create temp file name
-        jf_file = "/tmp/tmp_{0}_{1}.jf".format(files[-1], ''.join(random.choice(string.ascii_uppercase)
+        jf_file = "/tmp/tmp_{0}_{1}.jf".format(files[-2], ''.join(random.choice(string.ascii_uppercase)
                                                                   for i in range(8)))
         # if file2 does not exist change to empty string
         if files[1] is None:
@@ -102,11 +102,21 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
         else:
             f2 = files[1]
 
+        if files[-1]:
+            count_cutoff = 0
+        else:
+            count_cutoff = 3
+
         qual =   str(chr(qual_filter + 33))
         if gzipped:
-            subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L 3 -m 31 -s {5} -t {4} -C -o "
-                                   "{3} /dev/fd/0".format(files[0], f2, '"' + qual + '"', jf_file, cpus, hash_size)],
-                                  shell=True)
+            if ".fa" in files[0]:
+                subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -L {6} -m 31 -s {5} -t {4} -C -o "
+                                       "{3} /dev/fd/0".format(files[0], f2, '"' + qual + '"', jf_file, cpus, hash_size,
+                                                              count_cutoff)], shell=True)
+            else:
+                subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L {6} -m 31 -s {5} -t {4} -C -o "
+                                   "{3} /dev/fd/0".format(files[0], f2, '"' + qual + '"', jf_file, cpus, hash_size,
+                                                          count_cutoff)],shell=True)
         else:
             r = subprocess.check_call(["jellyfish", "count", "-Q", qual, "-L", "3", "-m", "31", "-s", hash_size, "-t",
                                    str(cpus), "-C", "-o", jf_file, files[0], f2], )
@@ -333,7 +343,6 @@ def calculate_matrix(strain_objs, cpus=2, reference_set=None, inverse=False, pai
     matrix_data_cluster = []
     for i in range(len(strain_keys)):
         _str += strain_keys[i] + delimeter
-
         matrix_data.append([])
         matrix_data_cluster.append([])
         for j in range(len(strain_keys)):
@@ -386,7 +395,7 @@ def compare_strains(q, strain_1, strain_2, reference_set=None, inverse=False, pa
     """
     if pairwise_kmer_filtering:
         sys.stdout.write("INCLUDING PAIRWISE FILTER\n")
-        q.put(strain_1.compare_to_and_filter(strain_2))
+        q.put(strain_1.compare_to_and_filter(strain_2, reference_set=reference_set, inverse=inverse))
     else:
         q.put(strain_1.compare_to(strain_2, reference_set=reference_set, inverse=inverse))
     return

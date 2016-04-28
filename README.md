@@ -1,8 +1,15 @@
 # StrainTypeMer
+<hr>
+##### StrainTypeMer is a tool for pairwise comparison multiple genomes. Comparisons are made be comparing the 31bp kmers
+found between different strains/samples.
 
-StrainTypeMer is a tool for comparing bacterial strains. StrainTypeMer uses kmer count output from jellyfish to 
-compare strains. StrainTyper is multithreaded and can perform comparisons within minutes.  Fast-mode compares 100,000 
-kmers and produces results nearly identical to a full comparison in less than a minute.
+StrainTypeMer takes fastq/a files as input, filters low quality kmers, determines sequencing coverage, performs pairwise
+identity between inputs, identifies MLST type, identifies antibiotic resistance genes are present in each strain without
+a reference genome.
+
+purpose: WGS for epidemology is clinically important.
+
+
 
 The results of StrainTypeMer include:
 

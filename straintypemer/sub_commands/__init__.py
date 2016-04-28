@@ -59,7 +59,8 @@ class jf_object:
         self.distinct_kmers = None
         self.total_kmers = None
         self.max_count = None
-        self.qf = None
+        self.qf = jellyfish.QueryMerFile(self.path)
+        self.qf_filtered = None
         self.rf = None
 
     def __check_resources(self):
@@ -144,7 +145,7 @@ class jf_object:
         """
         if self.do_not_filter:
             self.filtered_jf_file = self.path
-            self.qf = jellyfish.QueryMerFile(self.path)
+            self.qf_filtered = jellyfish.QueryMerFile(self.path)
             self.rf = jellyfish.ReadMerFile(self.path)
             self.__create_set()
         else:
@@ -152,7 +153,7 @@ class jf_object:
             subprocess.check_call(["jellyfish", "merge", "-L", str(int(self.kmer_cutoff) + 1), "-o",
                                    self.filtered_jf_file, self.path, dummy_jf_file],)
 
-            self.qf = jellyfish.QueryMerFile(self.filtered_jf_file)
+            self.qf_filtered = jellyfish.QueryMerFile(self.filtered_jf_file)
             self.rf = jellyfish.ReadMerFile(self.filtered_jf_file)
             self.__create_set()
         return
@@ -164,7 +165,7 @@ class jf_object:
         :param path:
         :return: None
         """
-        self.qf = jellyfish.QueryMerFile(path)
+        self.qf_filtered = jellyfish.QueryMerFile(path)
         self.rf = jellyfish.ReadMerFile(path)
         return None
 
@@ -176,15 +177,6 @@ class jf_object:
                "Total_kmers\t{0}\n".format(self.total_kmers) + \
                "Max_Count\t{0}\n".format(self.max_count)
 
-    # def kmer_file(self):
-    #     temp_file = "/tmp/tmp_kmer_{0}".format(''.join(random.choice(string.ascii_uppercase) for i in range(8)))
-    #     jf_temp_file = temp_file + ".jf"
-    #     try:
-    #         cmd = "jellyfish dump -L 11 A1A*all*.jf | jellyfish count -m 31 -s 2G -t 6 /dev/fd/0 -o " + jf_temp_file
-    #         subprocess.Popen(cmd, shell=True)
-    #     except:
-    #         sys.stderr.write("Error in running jellyfish count\n")
-    #         raise RuntimeError
 
     def __create_set(self):
         for mer, count in self.rf:
@@ -217,7 +209,7 @@ class jf_object:
         return self.name, strain.name, total, rescue, denom, smallest_count
 
     def compare_to_and_filter(self, strain, complexity_cutoff=12, coverage_cutoff=3,
-                              reference_set=None, inverse=False, filtering_cutoff=90):
+                              reference_set=None, inverse=False, filtering_cutoff=85, verbose=False):
 
 
         if reference_set is None:
@@ -256,9 +248,12 @@ class jf_object:
         # differences = differences_1.union(differences_2) # combined
 
         complexity_count = 0
-        within_1 = 0
-        within_2 = 0
-        within_3 = 0
+        within_1_strain_1 = 0
+        within_2_strain_1 = 0
+        within_3_strain_1 = 0
+        within_1_strain_2 = 0
+        within_2_strain_2 = 0
+        within_3_strain_2 = 0
         counter_not_filtered = 0
         counter_filtered = 0
         coverage_100 = 0
@@ -267,13 +262,16 @@ class jf_object:
         nucleotide_skew = 0
         filtered_1 = 0
         filtered_2 = 0
+        below_cutoff_1 = 0
+        below_cutoff_2 = 0
+
 
         for i, kmer in enumerate(differences):
             is_filtered_kmer = False
             mer = jellyfish.MerDNA(kmer)
             mer.canonicalize()
-            s1_count = int(self.qf[mer])
-            s2_count = int(strain.qf[mer])
+            s1_count = int(self.qf_filtered[mer])
+            s2_count = int(strain.qf_filtered[mer])
 
             # s1_out = "{0}:n={1} [cutoff={2}]".format(self.name, s1_count, self.kmer_cutoff)
             # s2_out = "{0}:n={1} [cutoff={2}]".format(strain.name, s2_count, strain.kmer_cutoff)
@@ -286,36 +284,36 @@ class jf_object:
                 is_filtered_kmer = True
 
             if s2_count == 0:
-                if  s1_count - int(self.kmer_cutoff)  == 1:
-                    within_1 += 1
-                    within_2 += 1
-                    within_3 += 1
+                if  s1_count - int(self.kmer_cutoff) == 1:
+                    within_1_strain_1 += 1
+                    within_2_strain_1 += 1
+                    within_3_strain_1 += 1
                     is_filtered_kmer = True
-                elif s1_count - int(self.kmer_cutoff)  == 2:
+                elif s1_count - int(self.kmer_cutoff) == 2:
                     #within_1 += 1
-                    within_2 += 1
-                    within_3 += 1
+                    within_2_strain_1 += 1
+                    within_3_strain_1 += 1
                     is_filtered_kmer = True
-                elif s1_count - int(self.kmer_cutoff)  == 3:
+                elif s1_count - int(self.kmer_cutoff) == 3:
                     #within_1 += 1
                     #within_2 += 1
-                    within_3 += 1
+                    within_3_strain_1 += 1
                     is_filtered_kmer = True
             else:
-                if  s2_count - int(strain.kmer_cutoff)  == 1:
-                    within_1 += 1
-                    within_2 += 1
-                    within_3 += 1
+                if  s2_count - int(strain.kmer_cutoff) == 1:
+                    within_1_strain_2 += 1
+                    within_2_strain_2 += 1
+                    within_3_strain_2 += 1
                     is_filtered_kmer = True
-                elif s2_count - int(strain.kmer_cutoff)  == 2:
+                elif s2_count - int(strain.kmer_cutoff) == 2:
                     #within_1 += 1
-                    within_2 += 1
-                    within_3 += 1
+                    within_2_strain_2 += 1
+                    within_3_strain_2 += 1
                     is_filtered_kmer = True
-                elif s2_count - int(strain.kmer_cutoff)  == 3:
+                elif s2_count - int(strain.kmer_cutoff) == 3:
                     #within_1 += 1
                     #within_2 += 1
-                    within_3 += 1
+                    within_3_strain_2 += 1
                     is_filtered_kmer = True
 
 
@@ -332,41 +330,67 @@ class jf_object:
                 is_filtered_kmer = True
                 complexity_count += 1
 
+
+
+            if is_filtered_kmer is False: # is_filtered_kmer is False:
+                #counter_not_filtered += 1
+                if s1_count == 0:
+                    if self.qf[mer] == 0:
+                        kept_2 += 1
+                        if verbose:
+                            print "strain: 2\tcount: {0}\t{1}|{2}\t{3}".format(s2_count, kmer, rc(kmer), self.qf[mer])
+
+                    else:
+                        below_cutoff_1 += 1
+                        is_filtered_kmer = True
+
+                else:
+                    if strain.qf[mer] == 0:
+                        kept_1  += 1
+                        if verbose:
+                            print "strain: 1\tcount: {0}\t{1}|{2}\t{3}".format(s1_count, kmer, rc(kmer), strain.qf[mer])
+
+                    else:
+                        below_cutoff_2 += 1
+                        is_filtered_kmer = True
+
+            # count updating
             if is_filtered_kmer:
                 counter_filtered += 1
                 if s1_count == 0:
-                    filtered_2 +=1
+                    filtered_2 += 1
                 else:
-                    filtered_1 +=1
-
-            else: # is_filtered_kmer is False:
+                    filtered_1 += 1
+            else:
                 counter_not_filtered += 1
-                if s1_count == 0:
-                    kept_2 += 1
-                    print "strain: 2\tcount: {0}\t{1}|{2}".format(s2_count, kmer, rc(kmer))
 
-
-                else:
-                    kept_1  += 1
-                    print "strain: 1\tcount: {0}\t{1}|{2}".format(s1_count, kmer, rc(kmer))
-
-
-                #sys.stdout.write(">{0}\t{1}\t{2}\tcomplexity:{3}\n{4}\n".format(
+                # sys.stdout.write(">{0}\t{1}\t{2}\tcomplexity:{3}\n{4}\n".format(
                 #    counter_not_filtered, s1_out, s2_out, complexity, kmer))
+        s = "\n"
+        s += "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
+        s += "{0:.1f} X\tcoverage '{1}' [kmer cutoff = {2}]\n".format(self.coverage, self.name, self.kmer_cutoff)
+        s += "{0:.1f} X\tcoverage '{1}' [kmer cutoff = {2}]\n".format(strain.coverage, strain.name, strain.kmer_cutoff)
+        s += "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
+        s += "{0}\tkmers found in '{1}' but not '{2}'\n".format(len(differences_1), self.name, strain.name)
+        s += "{0}\tkmers found in '{1}' but not '{2}' [AFTER FILTERING]\n".format(kept_1, self.name, strain.name)
+        s += "{0}\tkmers found in '{1}' but not '{2}'\n".format(len(differences_2), strain.name, self.name)
+        s += "{0}\tkmers found in '{1}' but not '{2}' [AFTER FILTERING]\n".format(kept_2, strain.name, self.name)
+        s += "~~~~~~~~~ FILTER ATTRS ~~~~~~~~~~~\n"
+        s += "{1}\tHomopolymer runs summing >= {0} [sum of 3 homopolymer runs]\n".format(complexity_cutoff, complexity_count)
+        s += "{0}\tHalf of the kmer contains a single base\n".format(nucleotide_skew)
+        s += "{0} : {1} : {2}\twithin 1:2:3 count of cutoff [strain_1] (e.g the kmer is near the histogram tail)\n".format(within_1_strain_1, within_2_strain_1, within_3_strain_1)
+        s += "{0} : {1} : {2}\tWithin 1:2:3 count of cutoff [strain_2] (e.g the kmer is near the histogram tail)\n".format(within_1_strain_2, within_2_strain_2, within_3_strain_2)
+        s += "{1}\tkmers with excessive coverage [{0}X]\n".format(coverage_cutoff, coverage_100)
+        s += "{0}\tkmer found below initial cutoff [strain_1]\n".format(below_cutoff_1)
+        s += "{0}\tkmer found below initial cutoff [strain_2]\n".format(below_cutoff_2)
+        s += "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
+        s += "{0}\tkmers filtered\n{1}\tkmers retained\n".format(counter_filtered, counter_not_filtered)
+        s += "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
+        s += "\n"
 
-        print
-        print "{0:.1f} coverage {1}".format(self.coverage, self.name)
-        print "{0:.1f} coverage {1}".format(strain.coverage, strain.name)
-        print "{0} kmers not found in {1} but not {2}".format(len(differences_1), self.name, strain.name)
-        print "{0} kmers not found in {1} but not {2} [FILTERED]".format(kept_1, self.name, strain.name)
-        print "{0} kmers not found in {1} but not {2}".format(len(differences_2), strain.name, self.name)
-        print "{0} kmers not found in {1} but not {2} [FILTERED]".format(kept_2, strain.name, self.name)
-        print "3x homopolymer runs summing >= {0} (n={1})".format(complexity_cutoff, complexity_count)
-        print "half of kmer one base (n={0})".format(nucleotide_skew)
-        print "within 1:2:3 of cutoff= {0}: {1}: {2}".format(within_1, within_2, within_3)
-        print "kmers filter = {0}\tkmers retained = {1}".format(counter_filtered, counter_not_filtered)
-        print "kmers with excessive coverage [{0}X]= {1}".format(coverage_cutoff ,coverage_100)
-        print
+        # if verbose:
+        sys.stdout.write(s)
+
         denom -= counter_filtered
         if strain_1_smallest:
             smallest_count -= filtered_1

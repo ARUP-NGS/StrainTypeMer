@@ -57,6 +57,11 @@ def arguments():
                                    "plasmid, core genome, pan genome kmers) in fastq format",
                               type=str, default=None, )
 
+    parser_fastq.add_argument("-kr",
+                              help="supplement use kmer reference set for comparison (e.g. plasmid, core genome, " +
+                                   "pan genome kmers) in fasta_format", type=str, default=None, )
+
+
     parser_fastq.add_argument("--do_not_output_histograms",
                               help="This will prevent the output of the PDF files containing the histograms",
                               default=True, action="store_false")
@@ -94,6 +99,11 @@ def main():
         if args.no_pdfs:
             args.do_not_output_histogram = False
             args.do_not_output_matrix = False
+
+        if args.kr is not None:
+            args.inverse_kmer_reference = args.kr
+            args.kmer_reference = args.kr
+
 
         compare(fq_files=args.fq_files, gzipped=args.gzipped,
                 no_kmer_filtering=args.no_kmer_filtering,

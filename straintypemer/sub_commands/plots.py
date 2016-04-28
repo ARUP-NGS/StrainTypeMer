@@ -50,7 +50,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
     :param y_labels: The labels for the y axis (most of the time same as the x_labels)
     :param data: The matrix (for kmer typing this should be expressed as percent identity (0-100))
     :param output_prefix: Prefix for the file_name
-    :param vmin: default is 50, this will autamatically be set to the lowest value for
+    :param vmin: default is 50, this will automatically be set to the lowest value for
     :return: None (writes file out)
     """
     D = np.array(data, dtype= 'float')
@@ -65,7 +65,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
     # Compute and plot first dendrogram. [LEFT]
     ax1 = fig.add_axes([0.058,0.1,0.115,0.6], frame_on=False, )
     Y = sch.linkage(D, method='weighted')
-    Z1 = sch.dendrogram(Y, orientation='left', labels=y_labels, color_threshold=0,) # color_list=['k'] )
+    Z1 = sch.dendrogram(Y, orientation='left', labels=y_labels, color_threshold=0, )  # color_list=['k'] )
     ax1.set_xticks([])
     ax1.set_yticks([])
 
@@ -78,7 +78,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
 
     # Plot distance matrix.
     axmatrix = fig.add_axes([0.26,0.1,0.6,0.6], frame_on=False)
-    idx1 = Z1['leaves'] #returns clustered ordered lables
+    idx1 = Z1['leaves'] #returns clustered ordered labels
     idx2 = Z2['leaves']
 
     D = D[idx1,:]
@@ -264,9 +264,9 @@ def produce_histograms(jf_objects, output_prefix):
         #
         #     #estimate genome size
             ax.annotate('Estimated genome size\n{:,} bp'.format(strain.estimate_genome_size(strain.kmer_cutoff)),
-                             xy=(xlim * .90, ylim * .80),
-                             xytext=(xlim * .90 , ylim * .60), fontsize=8, color='#483C32', horizontalalignment='right')
-        #
+                        xy=(xlim * .90, ylim * .80),
+                        xytext=(xlim * .90, ylim * .60), fontsize=8, color='#483C32', horizontalalignment='right')
+
         #     if this#~~~~~~~~
             pylab.xticks(fontsize=9)
             pylab.yticks(fontsize=9)
