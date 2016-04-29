@@ -162,44 +162,39 @@ def count(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0, 
     if os.path.isfile(mlst_path):
         mlst_profiles = cPickle.load(open(mlst_path))
 
-
-    print so.kmer_cutoff
     so.filter()
-
 
     # antibiotic_resistance_genes
     # if include_ard_comparsion:
     compare_ard(so)
-    for k, v in so.ard.iteritems():
-        #if np.sum(np.array(v)) > 50:
-        print k, v[:50]
+    print so.ard_result()
 
     so.clean_tmp_files()
 
-    sys.exit(1)
+
     # Print out strain stats
     sys.stdout.write(" STRAIN STATS ".center(80, "-") + "\n")
-    for name, file_path, filter_file in counts:
-        sys.stdout.write("Strain: {:s}\n".format(name))
-        if strain_objs[name].do_not_filter:
-            strain_objs[name].set_cutoff(0)
-            sys.stdout.write("\tInferred genome size: {0:,}  [no kmer filtering]\n".format(
-                strain_objs[name].estimate_genome_size(strain_objs[name].kmer_cutoff)))
-        else:
-            sys.stdout.write("\tInferred genome size: {0:,}  [filtering kmers counted <= {1:.0f} times]\n".format(
-                strain_objs[name].estimate_genome_size(strain_objs[name].kmer_cutoff), strain_objs[name].kmer_cutoff))
 
-        for profile in strain_objs[name].mlst_profiles(mlst_profiles):
-            sys.stdout.write("\tMLST profile: {0}\n".format(profile))
+    sys.stdout.write("Strain: {:s}\n".format(label))
 
-        for tag, ar_result in strain_objs[name].ard_result().iteritems():
-            sys.stdout.write(
-                "\tARD GENE: Gene tag: {0} Covered: {1:.1f}% (size {2}) Species: {3} Ref_id: {4}\n\t\tDescription: {5}\n".format(
-                    ar_result["tag"],
-                    ar_result["percent_covered"] * 100,
-                    ar_result["gene_length"],
-                    ar_result["species"],
-                    ar_result["ref_id"],
-                    ar_result["description"], ))
+    if so.do_not_filter:
+        sys.stdout.write("\tInferred genome size: {0:,}  [no kmer filtering]\n".format(
+        so.estimate_genome_size(so.kmer_cutoff)))
+    else:
+        sys.stdout.write("\tInferred genome size: {0:,}  [filtering kmers counted <= {1:.0f} times]\n".format(
+        so.estimate_genome_size(so.kmer_cutoff), so.kmer_cutoff))
+
+    for profile in so.mlst_profiles(mlst_profiles):
+        sys.stdout.write("\tMLST profile: {0}\n".format(profile))
+
+    for tag, ar_result in so.ard_result().iteritems():
+        sys.stdout.write(
+            "\tARD GENE: Gene tag: {0} Covered: {1:.1f}% (size {2}) Species: {3} Ref_id: {4}\n\t\tDescription: {5}\n".format(
+                ar_result["tag"],
+                ar_result["percent_covered"] * 100,
+                ar_result["gene_length"],
+                ar_result["species"],
+                ar_result["ref_id"],
+                ar_result["description"], ))
 
     sys.stdout.write("".center(80, "-") + "\n")
