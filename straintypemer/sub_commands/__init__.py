@@ -10,6 +10,7 @@ import itertools
 import pkg_resources
 from itertools import groupby
 from collections import Counter
+import math
 
 try:
     import jellyfish
@@ -22,7 +23,7 @@ def rc(sequence):
     return "".join([_d[s]  for s in reversed(sequence)])
 
 
-class jf_object:
+class StrainObject:
     """
     Contains information about the jellyfish db for a single strain
     """
@@ -30,7 +31,7 @@ class jf_object:
 
     def __init__(self, name, path):
         """
-        initialize a jelly
+        initialize a StrainObject
 
         :param name:
         :param path:
@@ -45,16 +46,22 @@ class jf_object:
         self.__check_resources()
         self.shared_count = None
         self.kmer_cutoff = None
+
+        self.has_suitable_coverage = False
+
         self.kmer_reference_count = 0
         self.estimated_coverage = 0
         self.reverse_kmer_reference_count = 0
         self.kmer_count = 0
         self.kmer_set = set([])
         self.kmer_archive = set([])
-        self.filtered_jf_file = "/tmp/tmp_filtered_{0}_{1}.jf".format(self.name ,
-                                                                  ''.join(random.choice(string.ascii_uppercase)
-                                                                          for i in range(8)))
+        self.filtered_jf_file = "/tmp/tmp_filtered_{0}_{1}.jf".format(self.name,
+                                                                      ''.join(random.choice(string.ascii_uppercase)
+                                                                              for i in range(8)))
         self.ard = {}
+
+
+
         self.unique_kmers = None
         self.distinct_kmers = None
         self.total_kmers = None
@@ -62,6 +69,8 @@ class jf_object:
         self.qf = jellyfish.QueryMerFile(self.path)
         self.qf_filtered = None
         self.rf = None
+
+        self.warnings = []
 
     def __check_resources(self):
         if os.path.exists(self.jellyfish_path) is False and os.access(self.jellyfish_path, os.X_OK):
@@ -120,13 +129,23 @@ class jf_object:
         """
         return np.sum(self.histo.values()[int(coverage_cutoff):])
 
-    def set_cutoff(self, cutoff):
+    def set_cutoff(self, coverage_cutoff):
         """
         Set the cutoff on which to filter the kmer set
+        This will hold a warning if the strain is below coverage
         :param cutoff: int with cutoff value
         :return: None
         """
-        self.kmer_cutoff = cutoff
+        if math.ceil(self.coverage * coverage_cutoff) <= 3:
+            self.warnings.append("low coverage")
+            self.warnings.append("calculated coverage {0}".format(math.ceil(self.coverage * coverage_cutoff)))
+            if (math.ceil(self.coverage * coverage_cutoff)) < 3:
+                self.warnings.append("Changed kmer cutoff to 3\n")
+                self.kmer_cutoff = 3
+            self.warnings.append("If estimated genome size is lower than expected consider repeating")
+            self.kmer_cutoff = int(math.ceil(self.coverage * coverage_cutoff))
+        else:
+            self.kmer_cutoff = int(math.ceil(self.coverage * coverage_cutoff))
         return
 
     def filter(self):

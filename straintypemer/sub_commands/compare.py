@@ -6,7 +6,7 @@ import subprocess
 import random
 import string
 import math
-from straintypemer.sub_commands import jf_object
+from straintypemer.sub_commands import StrainObject
 from straintypemer import _ROOT
 import cPickle
 from collections import OrderedDict
@@ -124,7 +124,7 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
     return _results
 
 
-def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filter=0, output_matrix=True,
+def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0, output_matrix=True,
             output_histogram=True, output_prefix="", no_kmer_filtering=False, kmer_reference=None,
             inverse_kmer_reference=None, include_ard_comparsion=False, pairwise_kmer_filtering=False):
     """
@@ -156,7 +156,7 @@ def compare(fq_files=None, gzipped=False, cpus=1, coverage_cutoff=0.2, qual_filt
     strain_objs = {}  # create the strain objects
     # calculated and set the coverage
     for label, file_path, filter_file in counts:
-        jf = jf_object(label, file_path)
+        jf = StrainObject(label, file_path)
         jf.do_not_filter = filter_file
         strain_objs.update({label: jf})
         sys.stdout.write("Strain: {0:s}\t Coverage Estimate: {1:.1f}\n".format(label, jf.coverage))
