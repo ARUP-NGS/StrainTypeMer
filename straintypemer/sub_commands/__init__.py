@@ -44,23 +44,16 @@ class StrainObject:
         self.histo = self.get_histo()
         self.coverage = self.get_estimate_coverage()
         self.__check_resources()
-        self.shared_count = None
         self.kmer_cutoff = None
 
         self.has_suitable_coverage = False
 
-        self.kmer_reference_count = 0
-        self.estimated_coverage = 0
-        self.reverse_kmer_reference_count = 0
-        self.kmer_count = 0
         self.kmer_set = set([])
         self.kmer_archive = set([])
         self.filtered_jf_file = "/tmp/tmp_filtered_{0}_{1}.jf".format(self.name,
                                                                       ''.join(random.choice(string.ascii_uppercase)
                                                                               for i in range(8)))
         self.ard = {}
-
-
 
         self.unique_kmers = None
         self.distinct_kmers = None
@@ -69,6 +62,7 @@ class StrainObject:
         self.qf = jellyfish.QueryMerFile(self.path)
         self.qf_filtered = None
         self.rf = None
+
 
         self.warnings = []
 
@@ -201,7 +195,8 @@ class StrainObject:
         for mer, count in self.rf:
             self.kmer_set.add(str(mer))
             #the repo strain
-            self.kmer_archive.add(str(mer))
+            if str(mer)[:2] < "AG":
+                self.kmer_archive.add(str(mer))
 
     def compare_to(self, strain, reference_set=None, inverse=False):
         if reference_set is None:
@@ -482,3 +477,31 @@ class StrainObject:
                         _out[tag]["ref_id"] = id
                         _out[tag]["species"] = result[1]
         return _out
+
+    def dump_to_mongo(self, path):
+        import json
+        from bson import json_util
+
+        contents = {
+            "strain_name" : self.name,
+            "path_count_file" : self.path,
+            "filtered_kmer_set" : self.do_not_filter,
+            "kmer_count_histogram" : self.histo,
+            "coverage" : self.coverage,
+            "kmer_cutoff" : self.kmer_cutoff,
+            "has_suitable_coverage" : self.has_suitable_coverage,
+            "kmer_count" : len(self.kmer_set),
+            # "kmers" : list(self.kmer_set),
+            "kmer_archive_count" : len(self.kmer_archive),
+
+            "ard_results" : self.ard,
+            "unique_kmers" : self.unique_kmers,
+            "distinct_kmers" : self.distinct_kmers,
+            "max_count" : self.max_count,
+            "warnings" : self.warnings,
+            "kmer_archive": list(self.kmer_archive),
+            }
+
+        wf = open(path, "w")
+        wf.write(json.dumps(contents, sort_keys=False, indent=4, default=json_util.default))
+        wf.close()
