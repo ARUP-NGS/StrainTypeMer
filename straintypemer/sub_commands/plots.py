@@ -63,14 +63,16 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
     fig.set_size_inches(11, 8.5)
 
     # Compute and plot first dendrogram. [LEFT]
-    ax1 = fig.add_axes([0.058,0.1,0.115,0.6], frame_on=False, )
+    # ax1 = fig.add_axes([0.058,0.1,0.115,0.6], frame_on=False, )
+    ax1 = fig.add_axes([0.058,0.1,0.155,0.6], frame_on=False, )
     Y = sch.linkage(D, method='weighted')
-    Z1 = sch.dendrogram(Y, orientation='left', labels=y_labels, color_threshold=0, )  # color_list=['k'] )
+    Z1 = sch.dendrogram(Y, orientation='right', labels=y_labels, color_threshold=0, )  # color_list=['k'] )
     ax1.set_xticks([])
     ax1.set_yticks([])
 
     # Compute and plot second dendrogram. [TOP]
-    ax2 = fig.add_axes([0.26,0.815,0.6,0.1], frame_on=False)
+    #ax2 = fig.add_axes([0.26,0.815,0.6,0.1], frame_on=False)
+    ax2 = fig.add_axes([0.26,0.775,0.6,0.1], frame_on=False)
     Y = sch.linkage(D, method='weighted', )
     Z2 = sch.dendrogram(Y, labels=x_labels, count_sort=False, color_threshold=0,) # color_list=['k'])
     ax2.set_xticks([])
