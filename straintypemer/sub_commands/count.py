@@ -1,65 +1,54 @@
-import os
-import sys
-from multiprocessing import Process, Queue
-from straintypemer.sub_commands.plots import *
-import subprocess
-import random
-import string
-import math
-from straintypemer.sub_commands import StrainObject
 import gzip
 from straintypemer.sub_commands.compare import *
 from straintypemer import _ROOT
 import cPickle
-from collections import OrderedDict
 
 
-def compare_ard(so, kmer_size=31, coverage_cutoff=.50):
+def compare_ard(so, kmer_size=31):
     from Bio import SeqIO
     import jellyfish
     _p = "/home/ksimmon/reference/ard/"
+    _p = "/Users/ksimmon/Box Sync/ARUP/strainTypeMer_resources/ard/"
     sys.stderr.write("Retrieving antibiotic resistance genes\n")
 
     descriptions = {}
     for i in open(_p + "categories.txt"):
         v = i.strip().split("\t")
         name = ".".join(v[0].split(".")[:-1])
-        descriptions.update({name : v})
+        descriptions.update({name: v})
 
     aro_tags = {}
     for i in open(_p + "AROtags.txt"):
         v = i.strip().split("\t")
-        #print v
-        aro_tags.update({v[2]:v[1]})
+        # print v
+        aro_tags.update({v[2]: v[1]})
     count = 0
 
     num_of_sequences = len([i.name for i in SeqIO.parse(_p + "ARmeta-genes.fa", "fasta")])
     for s in SeqIO.parse(_p + "ARmeta-genes.fa", "fasta"):
         count += 1
-        
+
         sys.stderr.write("\rAnalyzed {0} of {1} antibiotic resistant genes".format(count, num_of_sequences))
         if count != num_of_sequences:
             sys.stderr.flush()
         else:
             sys.stderr.write("\n")
 
-        id =  s.description.split(" ")[0]
+        id = s.description.split(" ")[0]
         species = s.description[s.description.rfind("[") + 1:s.description.rfind("]")]
         aro_tag = [i.split(" ")[0] for i in s.description.split(". ") if "ARO:" in i and "ARO:1000001" not in i]
-        #print id, species, descriptions[id][1], ",".join([aro_tags[tag] for tag in aro_tag])
+        # print id, species, descriptions[id][1], ",".join([aro_tags[tag] for tag in aro_tag])
         for j in range(0, len(s.seq) - kmer_size + 1):
-            kmer = s.seq[j : j + kmer_size]
+            kmer = s.seq[j: j + kmer_size]
             mer = jellyfish.MerDNA(str(kmer))
             mer.canonicalize()
 
             if id in so.ard:
                 so.ard[id][0].append(so.qf[mer])
             else:
-                so.ard.update({id : ([so.qf[mer]], species, descriptions[id][1],
-                                            [aro_tags[tag] for tag in aro_tag] ) })
+                so.ard.update({id: ([so.qf[mer]], species, descriptions[id][1],
+                                    [aro_tags[tag] for tag in aro_tag])})
     return
-
-
 
 
 def determine_file_type(this_file, gzipped=False):
@@ -106,7 +95,7 @@ def count_kmers(files, label, gzipped, cpus=1, qual_filter=0, hash_size="500M", 
     sys.stderr.write("counting kmers in files {0}: label {1}\n".format(", ".join(files), label))
     # create tmp file
     jf_file = "/tmp/tmp_{0}_{1}.jf".format(label, ''.join(random.choice(string.ascii_uppercase)
-              for i in range(8)))
+                                                          for i in range(8)))
 
     file_type = determine_file_type(files[0], gzipped=gzipped)
     if no_kmer_filtering:
@@ -137,7 +126,7 @@ def count_kmers(files, label, gzipped, cpus=1, qual_filter=0, hash_size="500M", 
 
 
 def count(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0, no_kmer_filtering=False,
-           label=None, out=sys.stdout):
+          label=None, out=sys.stdout):
     """
         This command counts the kmers in a strain and return a comparable list of kmers and other quality
         attributes of the strain.
@@ -163,6 +152,8 @@ def count(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0, 
     if os.path.isfile(mlst_path):
         mlst_profiles = cPickle.load(open(mlst_path))
 
+    
+
     so.filter()
     so.get_stats()
 
@@ -170,8 +161,9 @@ def count(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0, 
     # if include_ard_comparsion:
     compare_ard(so)
 
-    #TODO write information out to file.
+    # TODO write information out to file.
 
-    so.dump_to_mongo("/home/ksimmon/test_dump.json")
+    # so.dump_to_mongo("/home/ksimmon/test_dump.json")
+    so.dump_to_mongo(out)
 
     so.clean_tmp_files()

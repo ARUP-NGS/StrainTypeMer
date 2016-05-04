@@ -29,7 +29,7 @@ setup(
     author_email='ke.monk@gmail.com',
     description='kmer tool for strain typing',
     #packages = find_packages(),
-    install_requires = ['numpy>=1.10', 'matplotlib>=1.5.0', 'biopython>=1.66', 'scipy'],
+    install_requires = ['numpy>=1.10', 'matplotlib>=1.5.0', 'biopython>=1.66', 'scipy', 'bson'],
     include_package_data = True,
 )
 
