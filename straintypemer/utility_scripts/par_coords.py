@@ -1,4 +1,5 @@
-data_file = open("/data2/wash_u_sra/ENTEROCOCCUS/out_mar_16_vre.txt")
+#data_file = open("/data2/wash_u_sra/ENTEROCOCCUS/out_mar_16_vre.txt")
+data_file = open("/Users/ksimmon/Box Sync/ARUP/oyvind/ard.txt")
 process = False
 d = {}
 tag_list = set([])
@@ -43,7 +44,7 @@ for tag in tag_list:
             d[strain].update({tag : 0.0})
 import sys
 #wf = sys.stdout #
-wf = open("/data2/wash_u_sra/ENTEROCOCCUS/out_mar_16_vre_results.csv", "w")
+wf = open("/Users/ksimmon/Box Sync/ARUP/oyvind/ard_results.txt", "w")
 cols = ['mlst'] + list(tag_list)
 
 rows = {}
@@ -70,7 +71,7 @@ from pandas.tools.plotting import andrews_curves
 import pandas
 import matplotlib.pyplot as plt
 from pandas.tools.plotting import parallel_coordinates
-rf = pandas.read_csv("/data2/wash_u_sra/ENTEROCOCCUS/out_mar_16_vre_results.csv", sep=",")
+rf = pandas.read_csv("/Users/ksimmon/Box Sync/ARUP/oyvind/ard_results.txt", sep=",")
 #print rf
 #fig = plt.figure(num=1, figsize=13,13, )
 fig = plt.figure()

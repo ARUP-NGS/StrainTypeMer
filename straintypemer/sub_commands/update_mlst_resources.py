@@ -53,7 +53,7 @@ def pickle_profiles(file_lists, resource_path, kmer_size=31):
 
         for _file in [f for f in file_list if f[-4:] == '.tfa']:
             for seq_record in SeqIO.parse(os.path.join(resource_path, species,_file), 'fasta'):
-                seq_num = seq_record.name.split("_")[-1]
+                seq_num = seq_record.name.replace("-","_").split("_")[-1]
                 gene_name = "_".join(seq_record.name.replace("__","_").replace("-","_").split("_")[:-1])
                 if gene_name not in mlst_profiles_dict[species]["GENES"]:
                    mlst_profiles_dict[species]["GENES"].update({gene_name : {seq_num : set([])}})

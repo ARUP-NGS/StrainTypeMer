@@ -126,7 +126,7 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
 
 def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0, output_matrix=True,
             output_histogram=True, output_prefix="", no_kmer_filtering=False, kmer_reference=None,
-            inverse_kmer_reference=None, include_ard_comparsion=False, pairwise_kmer_filtering=False):
+            inverse_kmer_reference=None, include_ard_comparsion=True, pairwise_kmer_filtering=False):
     """
     The is the entry point for this subcommand:  compares multiple files
 
@@ -161,20 +161,21 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         strain_objs.update({label: jf})
         sys.stdout.write("Strain: {0:s}\t Coverage Estimate: {1:.1f}\n".format(label, jf.coverage))
         if no_kmer_filtering:
-            jf.set_cutoff(None)
+            jf.kmer_cutoff = None
         else:
-            if math.ceil(jf.coverage * coverage_cutoff) <= 3:
-                sys.stderr.write(" WARNING ".center(80, "-") + "\n")
-                sys.stderr.write("Strain: {0} has low coverage\n".format(label))
-                sys.stderr.write("Calculated cutoff is {0}\n".format(int(math.ceil(jf.coverage * coverage_cutoff))))
-                if (math.ceil(jf.coverage * coverage_cutoff)) < 3:
-                    sys.stderr.write("Changing kmer cutoff to 3\n")
-                    jf.set_cutoff(3)
-                sys.stderr.write("If estimated genome size is lower than expected consider repeating\n")
-                sys.stderr.write("".center(80, "-") + "\n\n")
-                jf.set_cutoff(int(math.ceil(jf.coverage * coverage_cutoff)))
-            else:
-                jf.set_cutoff(int(math.ceil(jf.coverage * coverage_cutoff)))
+            jf.set_cutoff(coverage_cutoff=coverage_cutoff)
+            # if math.ceil(jf.coverage * coverage_cutoff) <= 3:
+            #     sys.stderr.write(" WARNING ".center(80, "-") + "\n")
+            #     sys.stderr.write("Strain: {0} has low coverage\n".format(label))
+            #     sys.stderr.write("Calculated cutoff is {0}\n".format(int(math.ceil(jf.coverage * coverage_cutoff))))
+            #     if (math.ceil(jf.coverage * coverage_cutoff)) < 3:
+            #         sys.stderr.write("Changing kmer cutoff to 3\n")
+            #         jf.set_cutoff(3)
+            #     sys.stderr.write("If estimated genome size is lower than expected consider repeating\n")
+            #     sys.stderr.write("".center(80, "-") + "\n\n")
+            #     jf.set_cutoff(int(math.ceil(jf.coverage * coverage_cutoff)))
+            # else:
+            #     jf.set_cutoff(int(math.ceil(jf.coverage * coverage_cutoff)))
     sys.stdout.write("".center(80, "-") + "\n")
     ##########################################################################
 
@@ -206,7 +207,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         for profile in strain_objs[name].mlst_profiles(mlst_profiles):
             sys.stdout.write("\tMLST profile: {0}\n".format(profile))
 
-        for tag, ar_result in strain_objs[name].ard_result().iteritems():
+        for tag, ar_result in strain_objs[name].ard_result(coverage_cutoff=0.98).iteritems():
             sys.stdout.write(
             "\tARD GENE: Gene tag: {0} Covered: {1:.1f}% (size {2}) Species: {3} Ref_id: {4}\n\t\tDescription: {5}\n".format(
                     ar_result["tag"],
@@ -492,6 +493,7 @@ def compare_ard(strain_objs, kmer_size=31, coverage_cutoff=.50):
     import jellyfish
 
     _p = "/home/ksimmon/reference/ard/"
+    _p = "/Users/ksimmon/Box Sync/ARUP/strainTypeMer_resources/ard/"
     sys.stderr.write("Retrieving antibiotic resistance genes\n")
 
     descriptions = {}

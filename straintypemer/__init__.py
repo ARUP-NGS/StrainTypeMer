@@ -63,4 +63,16 @@ mlst_urls = {
         'http://pubmlst.org/data/alleles/senterica/sucA.tfa',
         'http://pubmlst.org/data/alleles/senterica/thrA.tfa',
     ],
+    'Escherichia coli' : [
+        'http://pubmlst.org/data/profiles/ecoli.txt',
+        'http://pubmlst.org/data/alleles/ecoli/adk.tfa',
+        'http://pubmlst.org/data/alleles/ecoli/fumC.tfa',
+        'http://pubmlst.org/data/alleles/ecoli/gyrB.tfa',
+        'http://pubmlst.org/data/alleles/ecoli/icd.tfa',
+        'http://pubmlst.org/data/alleles/ecoli/mdh.tfa',
+        'http://pubmlst.org/data/alleles/ecoli/purA.tfa',
+        'http://pubmlst.org/data/alleles/ecoli/recA.tfa'
+    ]
+
+
 }
