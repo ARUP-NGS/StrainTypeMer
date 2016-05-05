@@ -1,57 +1,61 @@
 # StrainTypeMer
 <hr>
-##### StrainTypeMer is a tool for pairwise comparison multiple genomes. Comparisons are made be comparing the 31bp kmers
-found between different strains/samples.
+##### StrainTypeMer is a tool for pairwise comparison multiple genomes. Comparisons are made be comparing the 31bp kmers found between different strains/samples.
 
-StrainTypeMer takes fastq/a files as input, filters low quality kmers, determines sequencing coverage, performs pairwise
-identity between inputs, identifies MLST type, identifies antibiotic resistance genes are present in each strain without
-a reference genome.
-
-purpose: WGS for epidemology is clinically important.
-
-
-
-The results of StrainTypeMer include:
-
-* Simlarity Table - displays the percentage of kmers shared between each strain combination
-* Distance Matrix - png that used clustering to show the strain relationships
-* Histogram Plots - PDF showing results of five strains per page.
-* Sample results - written to standard out
-    1. Estimated genome size of each strain
-    2. Coverage cutoff
-    3. MLST profile (for Acinetobacter;
-    4. ARDB - Antibiotic Resistance Database content
-        * Each strain is queried for kmers for gene present in the ARDB
-        * Number of kmers are report for each gene family
-
+##### Features include:
+* Reference free comparison
+* pan-genome and core-genome comparison using genome filter (see below)
+* Pairwise comparison of each input strain
+* Filters poor quality sequence
+* QC metrics
+    * Estimated genome size
+    * Kmer cutoff
+    * Low coverage warning
+* Detection of epidemiological important genes
+* reporting of MLST type
+* Clustering and dendrogram creation
+* PDF output
+* Text output of similarity table and QC metrics
 
 <hr>
-### REQUIREMENTS
+##### Inputs:
+* input can be fastq, fasta, fastq.gz, or fasta.gz files as input.
 
-In order to use StrainTypeMer you must first count kmers using [jellyfish 2.2.3 of greater](https://github.com/gmarcais/Jellyfish)
-for each strain.  While preprocessing is not required it can be performed prior to kmer counting.  We generally remove
-adapters and low quality/reads prior to kmer counting. [SHOW DATA BEFORE / AFTER]. 
+<hr>
+##### Installation:
 
-Future version may take fastq files as input.
+1 If not already on your system install python 2.7 (I use anaconda)
 
-#### Kmer counting
-The kmer size can be varied, we used 31 bp kmers to validate StrainTypeMer.
-It is important to keep the hash size equal when count each strain. 
+2 StrainTypeMer requires Jellyfish installed with the python bindings.
+``` bash
+wget https://github.com/gmarcais/Jellyfish/releases/download/v2.2.5/jellyfish-2.2.5.tar.gz
+tar xvf jellyfish-2.2.5.tar.gz
+cd jellyfish-2.2.5
+./configure --prefix=$HOME --enable-python-binding
+make
+make install
 
+```
+3 Install StrainTypeMer
+```bash
+git clone
+cd StrainTypeMer
+python setup.py install
+```
 
-`jellyfish count -m 31 -L 2 -t 6 -o strain.jf -s 4G -C strain_1.fq strain_2.fq `
+<hr>
+##### Usage:
+StrainTypeMer has the following sub-commands:
+ * update_mlst - This updates the MLST resources required to do MLST profiling
+ * compare - Main command that take sequence files performs kmer filtering, MLST profiling, Gene detection, and comparison
+    * Take >2 strains as input
+ * count - a subset of compare that peforms kmer filtering, MLST profiling, gene detection, and writes the strain record to json format.
+    * This command takes a single strain
+    * TODO this will allow for client side pairwise comparison
 
-the -L flag prevents jellyfish outputing kmers seen only once, it is not required. However these kmers will be excluded
-anyway, the file size will be reduced and the StrainTypeMer will not iterate over the kmer.
-
-### DEPENDENCIES
-
-* StrainTyper requires that `Jellyfish 2.2.3` be installed with the python swig bindings enabled. 
-* Python 2.7  <em> - The anaconda distribution of python includes Matplotlib and Numpy
-    * Matplotlib
-    * Numpy
-
-
+##### Considerations:
+StrainTypeMer was tested on Illumina datasets, where we found a minimum of 20X coverage was need for optimal strain
+comparsion.
 
 
 
