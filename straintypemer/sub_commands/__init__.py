@@ -15,8 +15,7 @@ import math
 try:
     import jellyfish
 except ImportError:
-    ImportError.message += "Jellyfish is not installed correctly make sure the python bindings are installed\n"
-    raise ImportError
+    raise ImportError("Jellyfish is not installed correctly make sure the python bindings are installed")
 
 
 def rc(sequence):
@@ -42,6 +41,7 @@ class StrainObject:
             self.jellyfish_path = "jellyfish"
             self.name = name
             self.path = path
+            self.rapid_mode = False
             self.do_not_filter = False
             self.histo = self.get_histo()
             self.coverage = self.get_estimate_coverage()
@@ -50,10 +50,8 @@ class StrainObject:
             self.has_suitable_coverage = False
             self.kmer_set = set([])
             self.kmer_archive = set([])
-            self.filtered_jf_file = "/tmp/tmp_filtered_{0}_{1}.jf".format(self.name,
-                                                                          ''.join(
-                                                                              random.choice(string.ascii_uppercase) for
-                                                                              i in range(8)))
+            self.filtered_jf_file = "/tmp/tmp_filtered_{0}_{1}.jf".\
+                format(self.name, ''.join(random.choice(string.ascii_uppercase) for i in range(8)))
             self.ard = {}
             self.unique_kmers = None
             self.distinct_kmers = None
@@ -67,7 +65,7 @@ class StrainObject:
             self.name = json_dump["strain_name"]
             self.path = json_dump["path_count_file"]
             self.do_not_filter = json_dump["filtered_kmer_set"]
-            self.histo = {int(k): int(v) for k, v in json_dump["kmer_count_histogram"].iteritems()}
+            self.histo = {int(k): int(v) for k, v in json_dump["kmer_count_histogram"].items()}
             self.coverage = json_dump["coverage"]
             self.kmer_cutoff = json_dump["kmer_cutoff"]
             self.has_suitable_coverage = json_dump["has_suitable_coverage"]
@@ -92,7 +90,7 @@ class StrainObject:
         if err != "":
             sys.stderr.write("Failed to retrieve db stats\n JELLYFISH ERROR: {0}\n".format(err))
             raise RuntimeError
-        out = out.split("\n")
+        out = out.decode().split("\n")
         self.unique_kmers = int(out[0].split(" ")[-1])
         self.distinct_kmers = int(out[1].split(" ")[-1])
         self.total_kmers = int(out[2].split(" ")[-1])
@@ -103,11 +101,11 @@ class StrainObject:
         op = subprocess.Popen([self.jellyfish_path, "histo", self.path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = op.communicate()
 
-        if err != "":
-            sys.stderr.write("Failed to retrieve db histo\n JELLYFISH ERROR: {0}\n".format(err))
+        if err.decode() != "":
+            sys.stderr.write("Failed to retrieve db histo\n JELLYFISH ERROR: {0}\n".format(err.decode()))
             sys.exit(1)
 
-        for v in out.strip().split("\n"):
+        for v in out.decode().strip().split("\n"):
             freq, count = [int(i) for i in v.split(" ")]
             if freq in _histo:
                 _histo[freq] += count
@@ -119,13 +117,14 @@ class StrainObject:
         """Estimates the coverage for kmers count > 3 times"""
         try:
             if np.sum([float(i) * self.histo[i] for i in self.histo if i >= 3]) == 0 or \
-                            float(np.sum(self.histo.values()[3:])) == 0:
+                            float(np.sum(list(self.histo.values())[3:])) == 0:
                 _cov = 1
             else:
                 _cov = np.sum([float(i) * self.histo[i] for i in self.histo if i >= 3]) / float(np.sum(
-                    self.histo.values()[3:]))
+                    list(self.histo.values())[3:]))
         except:
-            _cov = 1
+            raise
+            #_cov = 1
         return _cov
 
     def estimate_genome_size(self, coverage_cutoff):
@@ -134,7 +133,7 @@ class StrainObject:
         :param coverage_cutoff: the count at which kmers are excluded
         :return: the number of distinct kmers in the strain above cutoff
         """
-        return np.sum(self.histo.values()[int(coverage_cutoff):])
+        return np.sum(list(self.histo.values())[int(coverage_cutoff):])
 
     def set_cutoff(self, coverage_cutoff):
         """
@@ -162,7 +161,7 @@ class StrainObject:
         :return: Name of the object, the kmer set set([]), and the path to the filtered file in tmp directory
         """
         self.__filter_jf_file()
-        return self.name, self.kmer_set, self.filtered_jf_file
+        return self.name, self.kmer_set, self.kmer_archive, self.filtered_jf_file
 
     def __filter_jf_file(self):
         """
@@ -176,6 +175,7 @@ class StrainObject:
             self.__create_set()
         else:
             dummy_jf_file = pkg_resources.resource_filename('straintypemer', 'data/dummy_A.jf')
+
             subprocess.check_call(["jellyfish", "merge", "-L", str(int(self.kmer_cutoff) + 1), "-o",
                                    self.filtered_jf_file, self.path, dummy_jf_file], )
 
@@ -186,7 +186,7 @@ class StrainObject:
 
     def set_jf_file(self, path):
         """
-        set the path to the query and readmer files
+        set the path to the query and read mer files
 
         :param path:
         :return: None
@@ -205,22 +205,33 @@ class StrainObject:
 
     def __create_set(self):
         for mer, count in self.rf:
-            self.kmer_set.add(str(mer))
-            # the repo strain
-            if str(mer)[:2] in {"AG"}:
+            if self.rapid_mode == False:
+                self.kmer_set.add(str(mer))
+
+            if str(mer)[:2] in {"AG", "TC"}:
                 self.kmer_archive.add(str(mer))
+        if self.rapid_mode:
+            self.kmer_set = self.kmer_archive
 
     def compare_to(self, strain, reference_set=None, inverse=False):
+
+        if self.rapid_mode:
+            strain_1_kmer_set = self.kmer_archive
+            strain_2_kmer_set = strain.kmer_archive
+        else:
+            strain_1_kmer_set = self.kmer_set
+            strain_2_kmer_set = strain.kmer_set
+
         if reference_set is None:
-            strain_1 = self.kmer_set
-            strain_2 = strain.kmer_set
+            strain_1 = strain_1_kmer_set
+            strain_2 = strain_2_kmer_set
         else:
             if inverse:
-                strain_1 = self.kmer_set.difference(reference_set)
-                strain_2 = strain.kmer_set.difference(reference_set)
+                strain_1 = strain_1_kmer_set.difference(reference_set)
+                strain_2 = strain_2_kmer_set.difference(reference_set)
             else:
-                strain_1 = self.kmer_set.intersection(reference_set)
-                strain_2 = strain.kmer_set.intersection(reference_set)
+                strain_1 = strain_1_kmer_set.intersection(reference_set)
+                strain_2 = strain_2_kmer_set.intersection(reference_set)
 
         intersection = float(len(strain_1.intersection(strain_2)))
         denom = ((len(strain_1) - intersection) + (len(strain_2) - intersection)) + intersection
@@ -233,19 +244,39 @@ class StrainObject:
         rescue = (len(strain_1.intersection(strain_2)) * 2.0) / (smallest_count * 2.0) * 100.0
         return self.name, strain.name, total, rescue, denom, smallest_count
 
-    def compare_to_and_filter(self, strain, complexity_cutoff=12, coverage_cutoff=3,
-                              reference_set=None, inverse=False, filtering_cutoff=85, verbose=False):
+    def compare_to_and_filter(self, strain, complexity_cutoff=12, coverage_cutoff=3, reference_set=None, inverse=False,
+                              filtering_cutoff=85, verbose=False):
+        """
+        Compares the strains using a pairwise filter
 
+        :param strain:
+        :param complexity_cutoff:
+        :param coverage_cutoff:
+        :param reference_set:
+        :param inverse:
+        :param filtering_cutoff:
+        :param verbose:
+        :return:
+        """
+        # USE THE ARCHIVE SET IF RAPID_MODE=True
+        if self.rapid_mode:
+            strain_1_kmer_set = self.kmer_archive
+            strain_2_kmer_set = strain.kmer_archive
+        else:
+            strain_1_kmer_set = self.kmer_set
+            strain_2_kmer_set = strain.kmer_set
+
+        # FILTER IN OR OUT THE REFERENCE SET
         if reference_set is None:
-            strain_1 = self.kmer_set
-            strain_2 = strain.kmer_set
+            strain_1 = strain_1_kmer_set
+            strain_2 = strain_2_kmer_set
         else:
             if inverse:
-                strain_1 = self.kmer_set.difference(reference_set)
-                strain_2 = strain.kmer_set.difference(reference_set)
+                strain_1 = strain_1_kmer_set.difference(reference_set)
+                strain_2 = strain_2_kmer_set.difference(reference_set)
             else:
-                strain_1 = self.kmer_set.intersection(reference_set)
-                strain_2 = strain.kmer_set.intersection(reference_set)
+                strain_1 = strain_1_kmer_set.intersection(reference_set)
+                strain_2 = strain_2_kmer_set.intersection(reference_set)
 
         intersection = float(len(strain_1.intersection(strain_2)))
         denom = ((len(strain_1) - intersection) + (len(strain_2) - intersection)) + intersection
@@ -307,13 +338,13 @@ class StrainObject:
             if s2_count == 0:
                 if s1_count - int(self.kmer_cutoff) == 1:
                     within_1_strain_1 += 1
-                    within_2_strain_1 += 1
-                    within_3_strain_1 += 1
+                    #within_2_strain_1 += 1
+                    #within_3_strain_1 += 1
                     is_filtered_kmer = True
                 elif s1_count - int(self.kmer_cutoff) == 2:
                     # within_1 += 1
                     within_2_strain_1 += 1
-                    within_3_strain_1 += 1
+                    #within_3_strain_1 += 1
                     is_filtered_kmer = True
                 elif s1_count - int(self.kmer_cutoff) == 3:
                     # within_1 += 1
@@ -323,13 +354,13 @@ class StrainObject:
             else:
                 if s2_count - int(strain.kmer_cutoff) == 1:
                     within_1_strain_2 += 1
-                    within_2_strain_2 += 1
-                    within_3_strain_2 += 1
+                    #within_2_strain_2 += 1
+                    #within_3_strain_2 += 1
                     is_filtered_kmer = True
                 elif s2_count - int(strain.kmer_cutoff) == 2:
                     # within_1 += 1
                     within_2_strain_2 += 1
-                    within_3_strain_2 += 1
+                    #within_3_strain_2 += 1
                     is_filtered_kmer = True
                 elif s2_count - int(strain.kmer_cutoff) == 3:
                     # within_1 += 1
@@ -356,7 +387,7 @@ class StrainObject:
                     if self.qf[mer] == 0:
                         kept_2 += 1
                         if verbose:
-                            print "strain: 2\tcount: {0}\t{1}|{2}\t{3}".format(s2_count, kmer, rc(kmer), self.qf[mer])
+                            print("strain: 2\tcount: {0}\t{1}|{2}\t{3}".format(s2_count, kmer, rc(kmer), self.qf[mer]))
 
                     else:
                         below_cutoff_1 += 1
@@ -366,7 +397,8 @@ class StrainObject:
                     if strain.qf[mer] == 0:
                         kept_1 += 1
                         if verbose:
-                            print "strain: 1\tcount: {0}\t{1}|{2}\t{3}".format(s1_count, kmer, rc(kmer), strain.qf[mer])
+                            print("strain: 1\tcount: {0}\t{1}|{2}\t{3}".format(s1_count, kmer, rc(kmer),
+                                                                               strain.qf[mer]))
 
                     else:
                         below_cutoff_2 += 1
@@ -439,14 +471,17 @@ class StrainObject:
             return ["no profiles loaded"]
 
         matching_sequences = OrderedDict()
-        for species, _d in mlst_profiles.iteritems():
-            # print species
-            matching_sequences.update({species: {}})
+        for species, _d in mlst_profiles.items():
+            matching_sequences.update({species: OrderedDict()})
             for i, gene in enumerate(_d["GENE_ORDER"]):
                 matching_sequences[species].update({gene: []})
-                for profile_number, profile in _d["GENES"][gene].iteritems():
-                    if len(profile) == len(profile.intersection(self.kmer_set)):
-                        # print 'matched'
+                for profile_number, profile in _d["GENES"][gene].items():
+                    for kmer in profile:
+                        mer = jellyfish.MerDNA(kmer)
+                        mer.canonicalize()
+                        if self.qf[mer] == 0:
+                            break
+                    else:
                         matching_sequences[species][gene].append(profile_number)
 
             st_keys = [":".join(t) for t in list(itertools.product(*matching_sequences[species].values()))]
@@ -457,19 +492,30 @@ class StrainObject:
                 else:
                     st = 'NONE'
                 results.append("{0}\tST: {2}\tprofile: {1} [{3}]".format(species, k, st, ":".join(_d["GENE_ORDER"])))
+
+        if len(results) == 0:
+            return["no matching profiles found"]
         return results
 
     def ard_result(self, coverage_cutoff=0.80):
         _out = {}
-        for id, result in self.ard.iteritems():
+        for id, result in self.ard.items():
             counts = np.array(result[0]).clip(0, 1)
             gene_length = len(counts)
             kmers_covered = float(np.sum(counts))
             per_covered = kmers_covered / gene_length
             tag = ";".join(result[3])
             if per_covered >= coverage_cutoff:
+                mean_count = np.mean(np.ma.masked_equal(result[0], 0))
+                coverage_difference = mean_count / self.coverage
+                min_count = np.min(result[0])
+                max_count = np.max(result[0])
                 if tag not in _out:
                     _out.update({tag: {"percent_covered": per_covered,
+                                       "mean_count" : mean_count,
+                                       "coverage_difference" : coverage_difference,
+                                       "max_count" : max_count,
+                                       "min_count" : min_count,
                                        "gene_length": gene_length,
                                        "ref_id": id,
                                        "tag": tag,
@@ -479,6 +525,10 @@ class StrainObject:
                 else:
                     if per_covered > _out[tag]["percent_covered"] and kmers_covered > _out[tag]["gene_length"]:
                         _out[tag]["percent_covered"] = per_covered
+                        _out[tag]["mean_count"] = mean_count
+                        _out[tag]["coverage_difference"] = coverage_difference
+                        _out[tag]["max_count"] = max_count
+                        _out[tag]["min_count"] = min_count
                         _out[tag]["gene_length"] = gene_length
                         _out[tag]["ref_id"] = id
                         _out[tag]["species"] = result[1]

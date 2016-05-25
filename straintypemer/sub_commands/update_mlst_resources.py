@@ -1,15 +1,19 @@
 import sys
 import urllib
-import cPickle
+try:
+    import cPickle as pickle
+except:
+    import pickle
 import jellyfish
 from Bio import SeqIO
 import os
 from straintypemer import _ROOT
 from straintypemer import mlst_urls
+from collections import OrderedDict
 
 
 def update_mlst_resources():
-    resource_path = os.path.join(_ROOT, "data/mlst_resources/")
+    resource_path = os.path.join(_ROOT, "data/")
     if os.path.exists(resource_path) is False:
         os.mkdir(resource_path)
     file_lists = {}
@@ -25,7 +29,7 @@ def update_mlst_resources():
             file_lists[k].append(url.split("/")[-1].lower().replace("_.","."))
             sys.stderr.write('\tretrieving: {0}\n'.format(url))
             sys.stderr.write('\tsaving: {0}\n'.format(url.split("/")[-1].lower().replace("_.",".")))
-            urllib.urlretrieve(url, os.path.join(strain_path, url.split("/")[-1].lower().replace("_.",".") ))
+            urllib.request.urlretrieve(url, os.path.join(strain_path, url.split("/")[-1].lower().replace("_.",".") ))
     pickle_profiles(file_lists, resource_path)
     return
 
@@ -33,11 +37,11 @@ def update_mlst_resources():
 def pickle_profiles(file_lists, resource_path, kmer_size=31):
     jellyfish.MerDNA_k(kmer_size)
     #instantiate the pickle obj
-    mlst_profiles_dict = {}
-    for species, file_list in file_lists.iteritems():
+    mlst_profiles_dict = OrderedDict()
+    for species, file_list in file_lists.items():
 
         if species not in mlst_profiles_dict:
-            mlst_profiles_dict.update({species : {"ST" : {}, "GENES" : {}, "GENE_ORDER" : None}})
+            mlst_profiles_dict.update({species : {"ST" : OrderedDict(), "GENES" : OrderedDict(), "GENE_ORDER" : None}})
 
         number_of_genes = len(file_list) - 1
         for i, l in enumerate(open([os.path.join(resource_path, species, f)
@@ -65,6 +69,6 @@ def pickle_profiles(file_lists, resource_path, kmer_size=31):
                     mer.canonicalize()
                     mlst_profiles_dict[species]["GENES"][gene_name][seq_num].add(str(mer))
             sys.stderr.write("\tparsing: {0} : {1}\n".format(species, gene_name))
-    cPickle.dump(mlst_profiles_dict, open(os.path.join(resource_path, "mlst_profiles.pkl"), "wb") )
+    pickle.dump(mlst_profiles_dict, open(os.path.join(resource_path, "mlst_profiles.pkl"), "wb") )
     return
 

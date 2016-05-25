@@ -66,7 +66,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
     # ax1 = fig.add_axes([0.058,0.1,0.115,0.6], frame_on=False, )
     ax1 = fig.add_axes([0.058,0.1,0.155,0.6], frame_on=False, )
     Y = sch.linkage(D, method='weighted')
-    Z1 = sch.dendrogram(Y, orientation='right', labels=y_labels, color_threshold=0, )  # color_list=['k'] )
+    Z1 = sch.dendrogram(Y, orientation='left', labels=y_labels, color_threshold=0, )  # color_list=['k'] )
     ax1.set_xticks([])
     ax1.set_yticks([])
 
@@ -102,7 +102,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
 
     #modifiy x ticks and labels
     axmatrix.set_xticks(range(len(x_labels)))
-    axmatrix.set_xticklabels(["{0:s}".format((x_labels[i][:20] + "\n" + x_labels[i][21:40]).replace("_"," "),
+    axmatrix.set_xticklabels(["{0:s}".format((x_labels[i][:20] + "\n" + x_labels[i][20:40]).replace("_"," "),
                             strain_lengths[x_labels[i]]) for i in idx2 ], minor=False, multialignment='center',
                              linespacing=1)
 
@@ -118,7 +118,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
 
     #modify the y tick and labels
     axmatrix.set_yticks(range(len(y_labels)))
-    axmatrix.set_yticklabels( ["{:s}".format((y_labels[i][:20] + "\n" + y_labels[i][21:40]).replace("_"," "),
+    axmatrix.set_yticklabels(["{:s}".format((y_labels[i][:15] + "\n" + y_labels[i][15:30]).replace("_"," "),
                                     strain_lengths[y_labels[i]]) for i in idx1 ], minor=False, multialignment='center',
                               linespacing=1)
 
@@ -135,23 +135,25 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
             label.set_color("#000000")
 
     pylab.yticks(fontsize=6)
+
+
     #~~~ Add annotations to each cell
     font_size = adjust_font_size(len(data))
-    for x in xrange(len(x_labels)):
-        for y in xrange(len(y_labels)):
-            #modifiy formating to make sure value fits in square
+    for x in range(len(x_labels)):
+        for y in range(len(y_labels)):
+            #modifiy formatting to make sure value fits in square
             val = "{:.1f}".format(D[x][y])
             _color = 'k'
             if "100" in val:
                 val = '100'
                 _color = '#C3C300'
 
-            #use white font color if value is greater than 90
+            #use white font color if value is greater than 99
 
             if float(D[x][y]) > 95.0:
                 _color = 'w'
 
-            if float(D[x][y]) > 99.9:
+            if float(D[x][y]) >= 99.0:
                 _color = '#C3C300'
             #annotate this mother
             axmatrix.annotate(val, xy=(x, y), horizontalalignment='center', verticalalignment='center',
@@ -186,7 +188,7 @@ def chunk_list(_OrderedDict, chunk_size=5):
     """
     _l = []
     for i in range(0, len(_OrderedDict), chunk_size):
-        _l.append(_OrderedDict.items()[i : i + chunk_size])
+        _l.append(list(_OrderedDict.items())[i : i + chunk_size])
     return _l
 
 def generate_histo_values(jf_obj):
@@ -199,12 +201,12 @@ def generate_histo_values(jf_obj):
     histo = collections.OrderedDict()
     for i in range(1, 351):
         histo.update({i: 0})
-    for k, v in  jf_obj.histo.iteritems():
+    for k, v in  jf_obj.histo.items():
         if k in histo:
             histo[k] += v
         elif k > 350:
             histo[350] += v
-    return histo.keys(), histo.values(), max(histo.values()[3: -2]) * 1.5
+    return list(histo.keys()), list(histo.values()), max(list(histo.values())[3: -2]) * 1.5
 
 def produce_histograms(jf_objects, output_prefix):
     """

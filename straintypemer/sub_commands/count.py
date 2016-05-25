@@ -1,7 +1,10 @@
 import gzip
 from straintypemer.sub_commands.compare import *
 from straintypemer import _ROOT
-import cPickle
+try:
+    import cPickle as pickle
+except:
+    import pickle
 
 
 def compare_ard(so, kmer_size=31):
@@ -150,7 +153,7 @@ def count(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0, 
     mlst_path = os.path.join(_ROOT, "data/mlst_resources/mlst_profiles.pkl")
     mlst_profiles = None
     if os.path.isfile(mlst_path):
-        mlst_profiles = cPickle.load(open(mlst_path))
+        mlst_profiles = pickle.load(open(mlst_path))
 
     
 

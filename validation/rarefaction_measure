@@ -1,0 +1,69 @@
+import argparse
+import gzip
+from Bio import SeqIO
+import numpy as np
+import sys
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="rarefaction",
+                                     description="count new kmers acquired per read")
+    parser.add_argument("-i", "--input_file", help="the input file", type=str)
+    parser.add_argument("-o", "--output_file", help="the output file", type=argparse.FileType("w"))
+
+    args = parser.parse_args()
+    input_file = args.input_file
+    output_file = args.output_file
+
+    rf = gzip.open(input_file, 'rt', encoding='utf-8')
+    kmer_dict = {}
+    count = 0
+    for s in SeqIO.parse(rf,  "fastq"):
+        count += 1
+        kmer_dict = get_kmers(str(s.seq), kmer_dict)
+        cutoff = 5000
+        if count % cutoff == 0:
+            output_file.write(calculated_datapoint(kmer_dict, count))
+    else:
+        output_file.write(calculated_datapoint(kmer_dict, count))
+
+
+def calculated_datapoint(kmer_dict, read_count, cutoff=0.2):
+    counts = np.array(list(kmer_dict.values()))
+    counts = counts[np.where(counts > 3)]
+    total_kmers = np.sum(counts)
+    distinct_kmers = len(counts)
+    coverage = float("{0:.1f}".format(float(total_kmers)/distinct_kmers))
+    if coverage * cutoff < 3:
+        kmer_filter = 3
+    else:
+        kmer_filter = int(coverage * cutoff)
+    total_kmers = np.sum(counts[ np.where(counts > kmer_filter)])
+    distinct_kmers = len(counts)
+    return "{0}\t{1}\t{2}\t{3}\t{4}\n".format(total_kmers, distinct_kmers, read_count, coverage, kmer_filter)
+
+
+def rc(sequence_string):
+    bases = {"A": "T", "T": "A", "G": "C", "C": "G"}
+    try:
+        return "".join([bases[base] for base in reversed(sequence_string)])
+    except KeyError:
+        return None
+
+
+def get_kmers(sequence_string, kmer_dictionary, kmer_length=31):
+    kmers = kmer_dictionary
+    for i in range(len(sequence_string) - kmer_length + 1):
+        kmer = sequence_string[i:i+kmer_length]
+        rc_kmer = rc(kmer)
+        if rc_kmer is not None:
+            if rc_kmer < kmer:
+                kmer = rc_kmer
+            if kmer in kmers:
+                kmers[kmer] += 1
+            else:
+                kmers.update({kmer: 1})
+    return kmers
+
+if __name__ == "__main__":
+    main()
