@@ -207,6 +207,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         if rapid_mode:
             jf.rapid_mode = True
 
+        print(no_kmer_filtering, filter_file)
         if no_kmer_filtering or filter_file:
             jf.kmer_cutoff = 0
             jf.do_not_filter = True
