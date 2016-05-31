@@ -262,9 +262,6 @@ class StrainObject:
         :return:
         """
         # USE THE ARCHIVE SET IF RAPID_MODE=True
-        if self.do_not_filter or strain.do_not_filter:
-            return self.compare_to(self, strain, reference_set=reference_set, inverse=inverse)
-
 
         if self.rapid_mode:
             strain_1_kmer_set = self.kmer_archive
@@ -298,7 +295,7 @@ class StrainObject:
         rescue_numerator = float(len(strain_1.intersection(strain_2)))
         rescue = rescue_numerator / smallest_count * 100.0
         # return self.name, strain.name, total, rescue, denom, smallest_count
-        if total < filtering_cutoff:
+        if total < filtering_cutoff or self.do_not_filter or strain.do_not_filter:
             return self.name, strain.name, total, rescue, denom, smallest_count
 
         # get the difference kmers
