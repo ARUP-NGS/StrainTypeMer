@@ -201,13 +201,13 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
     # calculated and set the coverage
     for label, file_path, filter_file in counts:
         jf = StrainObject(label, file_path)
-        jf.do_not_filter = filter_file
+        #jf.do_not_filter = filter_file
         strain_objs.update({label: jf})
 
         if rapid_mode:
             jf.rapid_mode = True
 
-        if no_kmer_filtering:
+        if no_kmer_filtering or filter_file:
             jf.kmer_cutoff = 0
             jf.do_not_filter = True
         else:
