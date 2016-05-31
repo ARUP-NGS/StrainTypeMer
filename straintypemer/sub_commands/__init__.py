@@ -115,6 +115,9 @@ class StrainObject:
 
     def get_estimate_coverage(self):
         """Estimates the coverage for kmers count > 3 times"""
+
+        if self.do_not_filter:
+            return 1
         try:
             if np.sum([float(i) * self.histo[i] for i in self.histo if i >= 3]) == 0 or \
                             float(np.sum(list(self.histo.values())[3:])) == 0:

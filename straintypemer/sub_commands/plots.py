@@ -188,7 +188,7 @@ def chunk_list(_OrderedDict, chunk_size=5):
     """
     _l = []
     for i in range(0, len(_OrderedDict), chunk_size):
-        _l.append(list(_OrderedDict.items())[i : i + chunk_size])
+        _l.append(list(_OrderedDict.items())[i: i + chunk_size])
     return _l
 
 def generate_histo_values(jf_obj):

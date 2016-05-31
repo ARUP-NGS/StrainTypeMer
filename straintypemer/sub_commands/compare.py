@@ -207,12 +207,13 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         if rapid_mode:
             jf.rapid_mode = True
 
-        sys.stdout.write("{0},{1}\n".format(no_kmer_filtering, filter_file))
         if no_kmer_filtering or filter_file:
             jf.kmer_cutoff = 0
             jf.do_not_filter = True
+            jf.coverage = 1
         else:
             jf.set_cutoff(coverage_cutoff=coverage_cutoff)
+
         sys.stdout.write("Strain: {0:s}\t Coverage Estimate: {1:.1f}\n".format(label, jf.coverage))
     sys.stdout.write("".center(80, "-") + "\n")
     ##########################################################################
