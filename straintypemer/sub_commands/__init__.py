@@ -262,6 +262,10 @@ class StrainObject:
         :return:
         """
         # USE THE ARCHIVE SET IF RAPID_MODE=True
+        if self.do_not_filter or strain.do_not_filter:
+            return self.compare_to(self, strain, reference_set=reference_set, inverse=inverse)
+
+
         if self.rapid_mode:
             strain_1_kmer_set = self.kmer_archive
             strain_2_kmer_set = strain.kmer_archive
@@ -330,6 +334,7 @@ class StrainObject:
 
             # s1_out = "{0}:n={1} [cutoff={2}]".format(self.name, s1_count, self.kmer_cutoff)
             # s2_out = "{0}:n={1} [cutoff={2}]".format(strain.name, s2_count, strain.kmer_cutoff)
+
 
             if s1_count > self.coverage * coverage_cutoff:
                 coverage_100 += 1
