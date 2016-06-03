@@ -205,14 +205,14 @@ def generate_histo_values(jf_obj):
     :return: frequency count [1-150] and count at each frequency
     """
     histo = collections.OrderedDict()
-    for i in range(1, 351):
+    for i in range(1, 501):
         histo.update({i: 0})
     for k, v in  jf_obj.histo.items():
         if k in histo:
             histo[k] += v
-        elif k > 350:
-            histo[350] += v
-    return list(histo.keys()), list(histo.values()), max(list(histo.values())[3: -2]) * 1.5
+        elif k > 500:
+            histo[500] += v
+    return list(histo.keys()), list(histo.values()), max(list(histo.values())[10: -2]) * 1.5
 
 def produce_histograms(jf_objects, output_prefix):
     """
