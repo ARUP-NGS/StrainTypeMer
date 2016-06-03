@@ -197,7 +197,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
 
     # count kmers in fastq files #these are the raw counts prior to filtering
     if jf_input:
-        counts = jf_input
+        counts = input_is_jf(files_to_compare)
     else:
         counts = count_kmers(files_to_compare, gzipped, cpus=cpus, qual_filter=qual_filter,
                              no_kmer_filtering=no_kmer_filtering)
