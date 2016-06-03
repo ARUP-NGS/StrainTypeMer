@@ -11,7 +11,7 @@ from straintypemer.sub_commands.plots import *
 from straintypemer.sub_commands import StrainObject
 try:
     import cPickle as pickle
-except:
+except ImportError:
     import pickle
 
 
@@ -76,6 +76,7 @@ def parse_files(fq_files):
         raise IOError
     return _files
 
+
 def determine_file_type(this_file, gzipped=False):
     """
     returns 'fa' 'fq' or raises error
@@ -89,9 +90,7 @@ def determine_file_type(this_file, gzipped=False):
         with open(this_file, 'r') as f:
             first_line = f.readline().decode()
 
-    # infer format
-
-
+    # what format
     if first_line[0] == "@":
         is_type = "fq"
     elif first_line[0] == ">":
@@ -102,11 +101,13 @@ def determine_file_type(this_file, gzipped=False):
         raise TypeError("The files do not appear to be valid 'fasta' of 'fastq' format")
     return is_type
 
+
 def input_is_jf(files_to_compare):
     _out = []
     for i, files in enumerate(files_to_compare):
         _out.append((files[2], files[1], files[-1],))
     return _out
+
 
 def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500M", no_kmer_filtering=False):
     """
@@ -117,6 +118,7 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
     :param cpus: number of cpus to pass to jellyfish
     :param qual_filter: flag to pass to jf to filter bases
     :param hash_size: the initial hash size [default "500M"]
+    :param no_kmer_filtering:
     :return: tuple with (label, jf_file_path, filtering_flag)
     """
     _results = []  # will hold a tuple with the 'label', 'jellyfish count file'
@@ -143,7 +145,7 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
         else:
             count_cutoff = 3
 
-        qual =   str(chr(qual_filter + 33))
+        qual = str(chr(qual_filter + 33))
         if gzipped:
             if file_type == "fa":
                 subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -L {6} -m 31 -s {5} -t {4} -C -o "
@@ -151,12 +153,12 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
                                                               count_cutoff)], shell=True)
             elif file_type == "fq":
                 subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L {6} -m 31 -s {5} -t {4} -C -o "
-                                   "{3} /dev/fd/0".format(files[0], f2, '"' + qual + '"', jf_file, cpus, hash_size,
-                                                          count_cutoff)],shell=True)
+                                      "{3} /dev/fd/0".format(files[0], f2, '"' + qual + '"', jf_file, cpus, hash_size,
+                                                             count_cutoff)], shell=True)
         else:
             if file_type == "fa":
                 subprocess.check_call(["jellyfish", "count", "-L", "3", "-m", "31", "-s", hash_size, "-t",
-                                   str(cpus), "-C", "-o", jf_file, files[0], f2], )
+                                      str(cpus), "-C", "-o", jf_file, files[0], f2], )
 
             if file_type == "fq":
                 subprocess.check_call(
@@ -281,7 +283,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
             strain_kmer_counts = {s_key: len(strain_objs[s_key].kmer_set) for i, s_key in enumerate(strain_keys)}
 
 
-            generage_matrix(strain_keys, strain_keys, cluster_matrix, output_prefix + "kmer_reference",
+            generage_matrix(strain_keys, strain_keys, cluster_matrix, output_prefix + "_kmer_reference",
                             strain_kmer_counts)
         sys.stdout.write("".center(80, "-") + "\n")
 
@@ -292,7 +294,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         if output_matrix:
             strain_keys = list(strain_objs.keys())
             strain_kmer_counts = {s_key: len(strain_objs[s_key].kmer_set) for i, s_key in enumerate(strain_keys)}
-            generage_matrix(strain_keys, strain_keys, cluster_matrix, output_prefix + "inverse_kmer_reference",
+            generage_matrix(strain_keys, strain_keys, cluster_matrix, output_prefix + "_inverse_kmer_reference",
                             strain_kmer_counts)
         sys.stdout.write("".center(80, "-") + "\n")
 
@@ -460,7 +462,7 @@ def compare_strains(q, strain_1, strain_2, reference_set=None, inverse=False, pa
     :return: None
     """
     if pairwise_kmer_filtering:
-        #sys.stdout.write("INCLUDING PAIRWISE FILTER\n")
+        # sys.stdout.write("INCLUDING PAIRWISE FILTER\n")
         q.put(strain_1.compare_to_and_filter(strain_2, reference_set=reference_set, inverse=inverse))
     else:
         q.put(strain_1.compare_to(strain_2, reference_set=reference_set, inverse=inverse))
