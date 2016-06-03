@@ -108,7 +108,10 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
 
 
     axmatrix.xaxis.set_label_position("top")
-    pylab.xticks(rotation=-90, fontsize=6,)
+    if len(x_labels) > 100:
+        pylab.xticks(rotation=-90, fontsize=2, )
+    else:
+        pylab.xticks(rotation=-90, fontsize=6,)
 
     #make sure minor ticks are one
     axmatrix.tick_params(axis='both', which='minor', right='on', top='on', bottom='on', color="w")
@@ -134,7 +137,10 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
         else:
             label.set_color("#000000")
 
-    pylab.yticks(fontsize=6)
+    if len(x_labels) > 100:
+        pylab.yticks(fontsize=1)
+    else:
+        pylab.yticks(fontsize=6)
 
 
     #~~~ Add annotations to each cell
