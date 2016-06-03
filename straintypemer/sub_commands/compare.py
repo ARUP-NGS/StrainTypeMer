@@ -105,7 +105,7 @@ def determine_file_type(this_file, gzipped=False):
 def input_is_jf(files_to_compare):
     _out = []
     for i, files in enumerate(files_to_compare):
-        _out.append((files[2], files[1], files[-1],))
+        _out.append((files[2], files[0], files[-1],))
     return _out
 
 
