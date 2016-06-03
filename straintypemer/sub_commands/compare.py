@@ -102,7 +102,11 @@ def determine_file_type(this_file, gzipped=False):
         raise TypeError("The files do not appear to be valid 'fasta' of 'fastq' format")
     return is_type
 
-
+def input_is_jf(files_to_compare):
+    _out = []
+    for i, files in enumerate(files_to_compare):
+        _out.append((files[2], files[1], files[-1],))
+    return _out
 
 def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500M", no_kmer_filtering=False):
     """
@@ -128,7 +132,6 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
                                                                   for i in range(8)))
         # if file2 does not exist change to empty string
         file_type = determine_file_type(files[0], gzipped=gzipped)
-
 
         if files[1] is None:
             f2 = ""
@@ -159,17 +162,14 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
                 subprocess.check_call(
                     ["jellyfish", "count", "-Q", qual, "-L", count_cutoff, "-m", "31", "-s", hash_size,
                      "-t", str(cpus), "-C", "-o", jf_file] + files)
-
-
         _results.append((files[2], jf_file, files[-1]))
-
     return _results
 
 
 def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0, output_matrix=True,
             output_histogram=True, output_prefix="", no_kmer_filtering=False, kmer_reference=None,
             inverse_kmer_reference=None, include_ard_comparison=False, pairwise_kmer_filtering=False,
-            rapid_mode=True):
+            rapid_mode=True, jf_input=False, clean_files=True):
     """
     The is the entry point for this subcommand:  compares multiple files
 
@@ -194,8 +194,14 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
     files_to_compare = parse_files(fq_files)
 
     # count kmers in fastq files #these are the raw counts prior to filtering
-    counts = count_kmers(files_to_compare, gzipped, cpus=cpus, qual_filter=qual_filter,
-                         no_kmer_filtering=no_kmer_filtering)
+    if jf_input:
+        counts = jf_input
+    else:
+        counts = count_kmers(files_to_compare, gzipped, cpus=cpus, qual_filter=qual_filter,
+                             no_kmer_filtering=no_kmer_filtering)
+
+
+
     sys.stdout.write("".center(80, "-") + "\n")
     strain_objs = OrderedDict()  # create the strain objects
     # calculated and set the coverage
@@ -271,7 +277,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         matrix_data, cluster_matrix = calculate_matrix(strain_objs, cpus=cpus, reference_set=reference_set,
                                                        inverse=False, pairwise_kmer_filtering=pairwise_kmer_filtering)
         if output_matrix:
-            strain_keys =  list(strain_objs.keys())
+            strain_keys = list(strain_objs.keys())
             strain_kmer_counts = {s_key: len(strain_objs[s_key].kmer_set) for i, s_key in enumerate(strain_keys)}
 
 
@@ -304,11 +310,17 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         generage_matrix(strain_keys, strain_keys, cluster_matrix, output_prefix, strain_kmer_counts)
 
     if output_histogram:
-        produce_histograms(strain_objs, output_prefix)
+        new_objs = OrderedDict()
+        for k, v in strain_objs.items():
+            if v.do_not_filter is False:
+                new_objs.update({k:v})
 
-    for strain in list(strain_objs.values()):
-        strain.clean_tmp_files()
-    sys.stderr.write("completed analysis\n")
+        produce_histograms(new_objs, output_prefix)
+
+    if clean_files:
+        for strain in list(strain_objs.values()):
+            strain.clean_tmp_files()
+        sys.stderr.write("completed analysis\n")
 
 
 def calculate_matrix(strain_objs, cpus=2, reference_set=None, inverse=False, pairwise_kmer_filtering=False):
@@ -448,7 +460,7 @@ def compare_strains(q, strain_1, strain_2, reference_set=None, inverse=False, pa
     :return: None
     """
     if pairwise_kmer_filtering:
-        sys.stdout.write("INCLUDING PAIRWISE FILTER\n")
+        #sys.stdout.write("INCLUDING PAIRWISE FILTER\n")
         q.put(strain_1.compare_to_and_filter(strain_2, reference_set=reference_set, inverse=inverse))
     else:
         q.put(strain_1.compare_to(strain_2, reference_set=reference_set, inverse=inverse))

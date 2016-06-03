@@ -38,12 +38,12 @@ def arguments():
     parser_fastq.add_argument("-q", "--qual_score", help="the phred score to filter bases", default=0, type=int)
 
     parser_fastq.add_argument("-k", "--kmer_reference",
-                              help="Use kmer reference set for comparison (e.g. plasmid, core genome, pan genome kmers; "
-                                   "[ONLY COMPARE KMERS IN THIS FILE])", type=str, default=None,)
+                              help="Use kmer reference set for comparison (e.g. plasmid, core genome, pan genome kmers;"
+                                   " [ONLY COMPARE KMERS IN THIS FILE])", type=str, default=None,)
 
     parser_fastq.add_argument("-r", "--inverse_kmer_reference",
-                              help="Use kmer reference set for comparison (e.g. plasmid, core genome, pan genome kmers; "
-                                   "[ONLY COMPARE KMERS NOT IN THIS FILE])",
+                              help="Use kmer reference set for comparison (e.g. plasmid, core genome, pan genome kmers;"
+                                   " [ONLY COMPARE KMERS NOT IN THIS FILE])",
                               type=str, default=None, )
 
     # hide this in help; allows user to supply same inverse and kmer reference
@@ -80,6 +80,12 @@ def arguments():
     parser_fastq.add_argument("--rapid_mode", help="analyze a subset of kmers", action="store_true",
                               default=False)
 
+    parser_fastq.add_argument('-jf', "--jf_input", help=argparse.SUPPRESS, action="store_true",
+                              default=False)
+
+    parser_fastq.add_argument('-kf', "--keep_files", help=argparse.SUPPRESS, action="store_false",
+                              default=True)
+
     parser_fastq.add_argument('fq_files', nargs='+',
                               help='fastq files for each strain (fq1 OR fq1;label OR fq1,fq2;label will '
                                    'be matching string of the two files OR fq1,fq2;label'
@@ -87,33 +93,33 @@ def arguments():
                                    "when adding a reference genome")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    parser_count = subparsers.add_parser('count', help='counts and creates a strain_object that contains information'
-                                                       'about the strain',)
-
-    parser_count.add_argument("-t", "--cpus",
-                              help="The number of cpus to use when counting kmers in strains [Default == 2]",
-                              type=int, default=2)
-
-    parser_count.add_argument("-gz", "--gzipped", help="flag to indicate fastq_files are gzipped [Default False]",
-                              action="store_true", default=False)
-
-    parser_count.add_argument("--coverage_cutoff",
-                              help="percent of genome coverage to set kmer filters [DEFAULT .15 if coverage is 30 " +
-                                   "[(30 * .15) = 4.5 ~= 5] kmers with a count < 5 will be ignored for corresponding "
-                                   "strain",
-                              type=float, default=.15)
-
-    parser_count.add_argument("--no_kmer_filtering", help="Do not filter kmers based on coverage", action="store_true",
-                              default=False)
-
-    parser_count.add_argument("-q", "--qual_score", help="the phred score to filter bases", default=0, type=int)
-
-    parser_count.add_argument("-l", "--label", help="the label to attach to the file", default=None)
-
-    parser_count.add_argument("-o", "--out", help="the output file")
-
-    parser_count.add_argument('fq_files', nargs='+',
-                              help='fastq files for a strain')
+    # parser_count = subparsers.add_parser('count', help='counts and creates a strain_object that contains information'
+    #                                                    'about the strain',)
+    #
+    # parser_count.add_argument("-t", "--cpus",
+    #                           help="The number of cpus to use when counting kmers in strains [Default == 2]",
+    #                           type=int, default=2)
+    #
+    # parser_count.add_argument("-gz", "--gzipped", help="flag to indicate fastq_files are gzipped [Default False]",
+    #                           action="store_true", default=False)
+    #
+    # parser_count.add_argument("--coverage_cutoff",
+    #                           help="percent of genome coverage to set kmer filters [DEFAULT .15 if coverage is 30 " +
+    #                                "[(30 * .15) = 4.5 ~= 5] kmers with a count < 5 will be ignored for corresponding "
+    #                                "strain",
+    #                           type=float, default=.15)
+    #
+    # parser_count.add_argument("--no_kmer_filtering", help="Do not filter kmers based on coverage", action="store_true",
+    #                           default=False)
+    #
+    # parser_count.add_argument("-q", "--qual_score", help="the phred score to filter bases", default=0, type=int)
+    #
+    # parser_count.add_argument("-l", "--label", help="the label to attach to the file", default=None)
+    #
+    # parser_count.add_argument("-o", "--out", help="the output file")
+    #
+    # parser_count.add_argument('fq_files', nargs='+',
+    #                           help='fastq files for a strain')
 
     args = parser.parse_args()
     return args
@@ -152,7 +158,9 @@ def main():
             inverse_kmer_reference=args.inverse_kmer_reference,
             pairwise_kmer_filtering=args.pairwise_kmer_filter,
             rapid_mode=args.rapid_mode,
-            include_ard_comparison=args.include_ard_comparison
+            include_ard_comparison=args.include_ard_comparison,
+            jf_input=args.jf_input,
+            clean_files=args.keep_files
         )
 
     elif args.subparser_name == "update_mlst":

@@ -333,12 +333,12 @@ class StrainObject:
             # s2_out = "{0}:n={1} [cutoff={2}]".format(strain.name, s2_count, strain.kmer_cutoff)
 
 
-            if s1_count > self.coverage * coverage_cutoff:
-                coverage_100 += 1
-                is_filtered_kmer = True
-            elif s2_count > strain.coverage * coverage_cutoff:
-                coverage_100 += 1
-                is_filtered_kmer = True
+            # if s1_count > self.coverage * coverage_cutoff:
+            #     coverage_100 += 1
+            #     is_filtered_kmer = True
+            # elif s2_count > strain.coverage * coverage_cutoff:
+            #     coverage_100 += 1
+            #     is_filtered_kmer = True
 
             if s2_count == 0:
                 if s1_count - int(self.kmer_cutoff) == 1:
@@ -449,7 +449,7 @@ class StrainObject:
         s += "\n"
 
         # if verbose:
-        sys.stdout.write(s)
+        #sys.stdout.write(s)
 
         denom -= counter_filtered
         if strain_1_smallest:
