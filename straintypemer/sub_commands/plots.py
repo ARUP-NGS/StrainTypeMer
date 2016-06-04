@@ -7,7 +7,7 @@ import matplotlib.pyplot as pylab
 from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_pdf import PdfPages
 # import matplotlib.pyplot as pylab
-matplotlib.rcParams['lines.linewidth'] = 0.5
+matplotlib.rcParams['lines.linewidth'] = 0.25
 
 def adjust_font_size(matrix_length):
     """
@@ -138,7 +138,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
             label.set_color("#000000")
 
     if len(x_labels) > 100:
-        pylab.yticks(fontsize=3)
+        pylab.yticks(fontsize=2)
     else:
         pylab.yticks(fontsize=6)
 
