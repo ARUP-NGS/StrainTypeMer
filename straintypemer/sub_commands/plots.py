@@ -6,8 +6,10 @@ import collections
 import matplotlib.pyplot as pylab
 from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib import colors
+
 # import matplotlib.pyplot as pylab
-matplotlib.rcParams['lines.linewidth'] = 0.25
+matplotlib.rcParams['lines.linewidth'] = 0.1
 
 def adjust_font_size(matrix_length):
     """
@@ -37,12 +39,13 @@ def adjust_font_size(matrix_length):
     if matrix_length > 40:
         adjusted_size = 3
     if matrix_length > 50:
-        adjusted_size = 0
+        adjusted_size = 1
     return adjusted_size
 
 
 
-def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmin=50):
+def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50,
+                    identical=99.3, possibly_related=95.0, different=0):
     """
     This function saves a PDF file containing a clustered matrix (nearest neighbor).
 
@@ -50,10 +53,15 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
     :param y_labels: The labels for the y axis (most of the time same as the x_labels)
     :param data: The matrix (for kmer typing this should be expressed as percent identity (0-100))
     :param output_prefix: Prefix for the file_name
+    :param kmer_counts: the number of kmers analyzed {strain_label : num_kmers}
     :param vmin: default is 50, this will automatically be set to the lowest value for
     :return: None (writes file out)
     """
     D = np.array(data, dtype= 'float')
+
+    cmap = colors.ListedColormap(['#992600', '#b3b300', '#006600'])
+    bounds = [0, possibly_related, identical, 100]
+    norm = colors.BoundaryNorm(bounds, cmap.N)
 
     #truncate labels
     #x_labels_trun = [lab[:7] for lab in x_labels]
@@ -73,7 +81,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
     # Compute and plot second dendrogram. [TOP]
     #ax2 = fig.add_axes([0.26,0.815,0.6,0.1], frame_on=False)
     ax2 = fig.add_axes([0.26,0.775,0.6,0.1], frame_on=False)
-    Y = sch.linkage(D, method='weighted', )
+    Y = sch.linkage(D, method='weighted')
     Z2 = sch.dendrogram(Y, labels=x_labels, count_sort=False, color_threshold=0,) # color_list=['k'])
     ax2.set_xticks([])
     ax2.set_yticks([])
@@ -90,21 +98,28 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
     if np.min(D) < vmin:
         vmin = np.min(D)
 
-    im = axmatrix.matshow(D, aspect='auto', origin='lower', cmap=pylab.cm.RdYlGn,
-                         interpolation='nearest',vmin=vmin, vmax=100, )
+
 
     # minor hacking to create the minor ticks, this is need to overlay the grid
-    # probably a little bit of over kill but I think it better shows each grids as a distinct observartion
+    # probably a little bit of over kill but I think it better shows each grids as a distinct observation
     locs = np.arange(len(x_labels))
+    adjusted_locs = []
+    for loc in locs:
+
+        adjusted_locs.append(loc + .5)
+
     for axis in [axmatrix.xaxis, axmatrix.yaxis]:
-        axis.set_ticks(locs + 0.5, minor=True)
-        axis.set(ticks=locs, ticklabels=x_labels)
+        axis.set_ticks(adjusted_locs, minor=True, )
+        axis.set(ticks=locs + 0.5, ticklabels=x_labels, )
+
+    axmatrix.matshow(D, aspect='auto', origin='lower', cmap=cmap, norm=norm,
+                          interpolation='nearest', vmin=vmin, vmax=100, )
 
     #modifiy x ticks and labels
     axmatrix.set_xticks(range(len(x_labels)))
-    axmatrix.set_xticklabels(["{0:s}".format((x_labels[i][:20] + "\n" + x_labels[i][20:40]).replace("_"," "),
-                            strain_lengths[x_labels[i]]) for i in idx2 ], minor=False, multialignment='center',
-                             linespacing=1)
+    axmatrix.set_xticklabels(["{0:s}".format((x_labels[i][:20] + "" + x_labels[i][20:40]).replace("_"," "),
+                                             kmer_count[x_labels[i]]) for i in idx2], minor=False,
+                             multialignment='center', linespacing=1)
 
 
     axmatrix.xaxis.set_label_position("top")
@@ -114,16 +129,16 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
         pylab.xticks(rotation=-90, fontsize=6,)
 
     #make sure minor ticks are one
-    axmatrix.tick_params(axis='both', which='minor', right='on', top='on', bottom='on', color="w")
+    axmatrix.tick_params(axis='both', which='minor', right='on', top='on', bottom='on', color="w", width=.02)
 
     #turn off the major ticks
-    axmatrix.tick_params(axis='both', which='major', right='off', top='off', bottom='off', left='off')
+    axmatrix.tick_params(axis='both', which='major', right='off', top='off', bottom='off', left='off', width=.02)
 
     #modify the y tick and labels
     axmatrix.set_yticks(range(len(y_labels)))
-    axmatrix.set_yticklabels(["{:s}".format((y_labels[i][:15] + "\n" + y_labels[i][15:30]).replace("_"," "),
-                                    strain_lengths[y_labels[i]]) for i in idx1 ], minor=False, multialignment='center',
-                              linespacing=1)
+    axmatrix.set_yticklabels(["{:s}".format((y_labels[i][:15] + "" + y_labels[i][15:30]).replace("_"," "),
+                                            kmer_count[y_labels[i]]) for i in idx1], minor=False,
+                             multialignment='center', linespacing=1)
 
     for i, label in enumerate(axmatrix.xaxis.get_ticklabels()):
         if i%2 == 0:
@@ -145,42 +160,51 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, strain_lengths, vmi
 
     #~~~ Add annotations to each cell
     font_size = adjust_font_size(len(data))
-    for x in range(len(x_labels)):
-        for y in range(len(y_labels)):
-            #modifiy formatting to make sure value fits in square
-            val = "{:.1f}".format(D[x][y])
-            _color = 'k'
-            if "100" in val:
-                val = '100'
-                _color = '#C3C300'
 
-            #use white font color if value is greater than 99
+    if len(x_labels) < 200:
+        for x in range(len(x_labels)):
+            for y in range(len(y_labels)):
+                #modifiy formatting to make sure value fits in square
+                val = "{:.1f}".format(D[x][y])
+                _color = 'k'
+                if "100" in val:
+                    val = '100'
+                    _color = '#C3C300'
 
-            if float(D[x][y]) > 95.0:
-                _color = 'w'
+                #use white font color if value is greater than 99
 
-            if float(D[x][y]) >= 99.0:
-                _color = '#C3C300'
-            #annotate this mother
-            axmatrix.annotate(val, xy=(x, y), horizontalalignment='center', verticalalignment='center',
-                              fontsize=font_size, color=_color )
+                if float(D[x][y]) >= possibly_related:
+                    _color = 'black'
+                else:
+                    _color = "w"
+
+
+                if float(D[x][y]) >= identical:
+                    _color = 'w'
+
+
+
+
+                #annotate this mother
+                axmatrix.annotate(val, xy=(x, y), horizontalalignment='center', verticalalignment='center',
+                                  fontsize=font_size, color=_color )
 
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #color scale bar
-    axcolor = fig.add_axes([0.88,0.1,0.02,0.6], frame_on=False)
-    pylab.colorbar(im, cax=axcolor)
+    #axcolor = fig.add_axes([0.88,0.1,0.02,0.6], frame_on=False)
+    #pylab.colorbar(im, cax=axcolor)
 
     #make a grid on the minor axis
-    axmatrix.grid(True, which='minor', linestyle='-', color="w", linewidth=0.25)
+    axmatrix.grid(True, which='minor', linestyle='-', color="w", linewidth=0.1)
 
     #filename
     if output_prefix != "":
-        pdf = "{0}_{1}".format(output_prefix,'matrix.pdf')
+        pdf = "{0}_{1}".format(output_prefix,'matrix.png',)
     else:
         pdf = 'matrix.pdf'
 
-    fig.savefig(pdf)
+    fig.savefig(pdf, format="png", bbox_inches="tight", dpi=800)
     return
 
 def chunk_list(_OrderedDict, chunk_size=5):

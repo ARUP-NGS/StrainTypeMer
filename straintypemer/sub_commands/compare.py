@@ -396,11 +396,15 @@ def calculate_matrix(strain_objs, cpus=2, reference_set=None, inverse=False, pai
     
 
     # PRINT SIMILARITY TABlE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if reference_set is not None:
+    if reference_set is None:
+        sys.stdout.write("[FULL]\n")
+    else:
         if inverse:
             sys.stdout.write("[INVERSE KMER REFERENCE]\n")
         else:
             sys.stdout.write("[KMER REFERENCE]\n")
+
+
     sys.stdout.write("[SIMILARITY TABLE]\n")
     delimeter = ","
     _str = delimeter + delimeter.join(strain_keys) + "\n"

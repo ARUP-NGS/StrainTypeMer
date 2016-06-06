@@ -7,6 +7,7 @@ The input of strains should be provided as a positional argument
 from straintypemer.sub_commands.compare import compare
 from straintypemer.sub_commands.update_mlst_resources import update_mlst_resources
 from straintypemer.sub_commands.count import count
+from straintypemer.sub_commands.plot_output import plot_output
 import argparse
 
 ########################################################################################################################
@@ -92,6 +93,12 @@ def arguments():
                                    " included '[NF]' at the end to prevent kmer filter (useful"
                                    "when adding a reference genome")
 
+    parser_plot = subparsers.add_parser('plot', help='plot results from stdout')
+
+    parser_plot.add_argument("-i", "--input", help="the input file", type=argparse.FileType("r"), required=True)
+    parser_plot.add_argument("-o", "--output_prefix", help="the output prefix", type=argparse.FileType("w"),
+                              required=True)
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # parser_count = subparsers.add_parser('count', help='counts and creates a strain_object that contains information'
     #                                                    'about the strain',)
@@ -162,6 +169,10 @@ def main():
             jf_input=args.jf_input,
             clean_files=args.keep_files
         )
+
+    elif args.subparser_name == "plot":
+        plot_output(input_file=args.input, output_prefix=args.ouput)
+
 
     elif args.subparser_name == "update_mlst":
         update_mlst_resources()
