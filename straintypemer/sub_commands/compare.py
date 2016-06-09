@@ -255,7 +255,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         for profile in strain_objs[name].mlst_profiles(mlst_profiles):
             sys.stdout.write("\tMLST profile: {0}\n".format(profile))
 
-        for tag, ar_result in strain_objs[name].ard_result(coverage_cutoff=0.98).items():
+        for tag, ar_result in strain_objs[name].ard_result(coverage_cutoff=0.90).items():
             sys.stdout.write(
             "\tARD GENE: Gene tag: {0} Covered: {1:.1f}% (size {2}) "
             "\n\t\tcount mean(min|max): {3} ({5}|{6}); {4:.1f}X change from coverage"

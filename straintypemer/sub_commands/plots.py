@@ -9,7 +9,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import colors
 
 # import matplotlib.pyplot as pylab
-matplotlib.rcParams['lines.linewidth'] = 0.1
+matplotlib.rcParams['lines.linewidth'] = 1
 
 def adjust_font_size(matrix_length):
     """
@@ -57,6 +57,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     :param vmin: default is 50, this will automatically be set to the lowest value for
     :return: None (writes file out)
     """
+    matplotlib.rcParams['lines.linewidth'] = .5
     D = np.array(data, dtype= 'float')
 
     cmap = colors.ListedColormap(['#992600', '#b3b300', '#006600'])
@@ -102,10 +103,11 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
 
     # minor hacking to create the minor ticks, this is need to overlay the grid
     # probably a little bit of over kill but I think it better shows each grids as a distinct observation
+
+    matplotlib.rcParams['lines.linewidth'] = 0.1
     locs = np.arange(len(x_labels))
     adjusted_locs = []
     for loc in locs:
-
         adjusted_locs.append(loc + .5)
 
     for axis in [axmatrix.xaxis, axmatrix.yaxis]:
@@ -114,7 +116,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
 
     axmatrix.matshow(D, aspect='auto', origin='lower', cmap=cmap, norm=norm,
                           interpolation='nearest', vmin=vmin, vmax=100, )
-
+    matplotlib.rcParams['lines.linewidth'] = 1
     #modifiy x ticks and labels
     axmatrix.set_xticks(range(len(x_labels)))
     axmatrix.set_xticklabels(["{0:s}".format((x_labels[i][:20] + "" + x_labels[i][20:40]).replace("_"," "),
@@ -126,7 +128,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     if len(x_labels) > 100:
         pylab.xticks(rotation=-90, fontsize=2, )
     else:
-        pylab.xticks(rotation=-90, fontsize=6,)
+        pylab.xticks(rotation=-90, fontsize=adjust_font_size(len(data)),)
 
     #make sure minor ticks are one
     axmatrix.tick_params(axis='both', which='minor', right='on', top='on', bottom='on', color="w", width=.02)
@@ -155,13 +157,13 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     if len(x_labels) > 100:
         pylab.yticks(fontsize=2)
     else:
-        pylab.yticks(fontsize=6)
+        pylab.yticks(fontsize=adjust_font_size(len(data)))
 
 
     #~~~ Add annotations to each cell
     font_size = adjust_font_size(len(data))
 
-    if len(x_labels) < 200:
+    if len(x_labels) < 100:
         for x in range(len(x_labels)):
             for y in range(len(y_labels)):
                 #modifiy formatting to make sure value fits in square
