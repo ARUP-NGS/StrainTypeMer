@@ -255,7 +255,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         for profile in strain_objs[name].mlst_profiles(mlst_profiles):
             sys.stdout.write("\tMLST profile: {0}\n".format(profile))
 
-        for tag, ar_result in strain_objs[name].ard_result(coverage_cutoff=0.90).items():
+        for tag, ar_result in strain_objs[name].ard_result(coverage_cutoff=0.8).items():
             sys.stdout.write(
             "\tARD GENE: Gene tag: {0} Covered: {1:.1f}% (size {2}) "
             "\n\t\tcount mean(min|max): {3} ({5}|{6}); {4:.1f}X change from coverage"
@@ -561,7 +561,7 @@ def load_kmer_reference(kmer_reference):
     return reference_set
 
 
-def compare_ard(strain_objs, kmer_size=31, coverage_cutoff=.50):
+def compare_ard(strain_objs, kmer_size=31, coverage_cutoff=.40):
     from Bio import SeqIO
     import jellyfish
 
@@ -593,7 +593,7 @@ def compare_ard(strain_objs, kmer_size=31, coverage_cutoff=.50):
             sys.stderr.write("\n")
 
         id =  s.description.split(" ")[0]
-        species = s.description[s.description.rfind("[") + 1:s.description.rfind("]")]
+        species = s.description[s.description.rfind("[") + 1: s.description.rfind("]")]
         aro_tag = [i.split(" ")[0] for i in s.description.split(". ") if "ARO:" in i and "ARO:1000001" not in i]
         #print id, species, descriptions[id][1], ",".join([aro_tags[tag] for tag in aro_tag])
         for j in range(0, len(s.seq) - kmer_size + 1):
@@ -606,4 +606,5 @@ def compare_ard(strain_objs, kmer_size=31, coverage_cutoff=.50):
                 else:
                     so.ard.update({id : ([so.qf[mer]], species, descriptions[id][1],
                                                 [aro_tags[tag] for tag in aro_tag] ) })
+
     return strain_objs
