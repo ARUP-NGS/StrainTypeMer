@@ -4,6 +4,6 @@ data/
 *.tfa
 *.txt
 dist/
-build
+build/
 straintypemer.egg-info
 *.pdf
