@@ -162,13 +162,13 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
                                                              count_cutoff)], shell=True)
         else:
             if file_type == "fa":
-                subprocess.check_call(["jellyfish", "count", "-L", "3", "-m", "31", "-s", hash_size, "-t",
-                                      str(cpus), "-C", "-o", jf_file, files[0], f2], )
+                subprocess.check_call(["jellyfish", "count", "-L", str(count_cutoff), "-m", "31", "-s", hash_size, "-t",
+                                      str(cpus), "-C", "-o", jf_file, files[0], f2],)
 
             if file_type == "fq":
                 subprocess.check_call(
-                    ["jellyfish", "count", "-Q", qual, "-L", count_cutoff, "-m", "31", "-s", hash_size,
-                     "-t", str(cpus), "-C", "-o", jf_file] + files)
+                    ["jellyfish", "count", "-Q", qual, "-L", str(count_cutoff), "-m", "31", "-s", hash_size,
+                     "-t", str(cpus), "-C", "-o", jf_file, files[0], f2],)
         _results.append((files[2], jf_file, files[-1]))
     return _results
 
