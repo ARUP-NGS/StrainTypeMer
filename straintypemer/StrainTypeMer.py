@@ -16,13 +16,13 @@ import argparse
 
 def arguments():
     """
-    Parses user supplied arguments for StrainTypeMer subcommands
+    Parses user supplied arguments for StrainTypeMer sub-commands
     :return: named tuple of arguments
     """
     parser = argparse.ArgumentParser(prog="StrainTypeMer", formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="the script take multiple jellyfish counts and compares the strains")
 
-    subparsers = parser.add_subparsers(help='sub-command help', dest='subparser_name', title="subcommands")
+    subparsers = parser.add_subparsers(help='sub-command help', dest='subparser_name', title="sub-commands")
 
     subparsers.add_parser('update_mlst', help='update mlst resources')
 
@@ -74,8 +74,7 @@ def arguments():
                               help="evaluate non-shared kmers in closely related strains",
                               action="store_true", default=False)
 
-    parser_fastq.add_argument("-ard", "--include_ard_comparison",
-                              help="include comparison with ard genes",
+    parser_fastq.add_argument("-ard", "--include_ard_comparison", help="include comparison with ard genes",
                               action="store_true", default=False)
 
     parser_fastq.add_argument("--rapid_mode", help="analyze a subset of kmers", action="store_true",
@@ -88,16 +87,15 @@ def arguments():
                               default=True)
 
     parser_fastq.add_argument('fq_files', nargs='+',
-                              help='fastq files for each strain (fq1 OR fq1;label OR fq1,fq2;label will '
-                                   'be matching string of the two files OR fq1,fq2;label'
-                                   " included '[NF]' at the end to prevent kmer filter (useful"
-                                   "when adding a reference genome")
+                              help='fastq files for each strain (fq1 OR fq1;label OR fq1,fq2;label will be matching '
+                                   'string of the two files OR fq1,fq2;label included "[NF]" at the end to prevent '
+                                   'kmer filter (useful when adding a reference genome)')
 
-    parser_plot = subparsers.add_parser('plot', help='plot results from stdout')
+    parser_plot = subparsers.add_parser('plot', help='plot results from standard out')
 
     parser_plot.add_argument("-i", "--input", help="the input file", type=argparse.FileType("r"), required=True)
     parser_plot.add_argument("-o", "--output_prefix", help="the output prefix", type=argparse.FileType("w"),
-                              required=True)
+                             required=True)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # parser_count = subparsers.add_parser('count', help='counts and creates a strain_object that contains information'
@@ -116,7 +114,8 @@ def arguments():
     #                                "strain",
     #                           type=float, default=.15)
     #
-    # parser_count.add_argument("--no_kmer_filtering", help="Do not filter kmers based on coverage", action="store_true",
+    #  parser_count.add_argument("--no_kmer_filtering", help="Do not filter kmers based on coverage",
+    # action="store_true",
     #                           default=False)
     #
     # parser_count.add_argument("-q", "--qual_score", help="the phred score to filter bases", default=0, type=int)
@@ -172,7 +171,6 @@ def main():
 
     elif args.subparser_name == "plot":
         plot_output(input_file=args.input, output_prefix=args.ouput)
-
 
     elif args.subparser_name == "update_mlst":
         update_mlst_resources()

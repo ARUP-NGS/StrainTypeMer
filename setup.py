@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='StrainTypeMer',
-    version='1.0',
+    version='1.0b',
     packages=['straintypemer', 'straintypemer/sub_commands', ],
     package_dir={'straintypemer' : 'straintypemer', },
     package_data={'straintypemer' : ['data/*.fa','data/*.txt','data/*.jf', ]},
@@ -15,7 +15,7 @@ setup(
     author_email='ke.monk@gmail.com',
     description='kmer tool for strain typing',
     #packages = find_packages(),
-    install_requires = ['numpy>=1.10', 'biopython>=1.66',],
+    install_requires = ['numpy>=1.10', 'biopython>=1.66', 'matplotlib>=1.5.1'],
     include_package_data = True,
 )
 

@@ -7,8 +7,6 @@ import matplotlib.pyplot as pylab
 from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import colors
-
-# import matplotlib.pyplot as pylab
 matplotlib.rcParams['lines.linewidth'] = 1
 
 def adjust_font_size(matrix_length):
@@ -18,11 +16,11 @@ def adjust_font_size(matrix_length):
     :return: (int) the suggested font size for given matrix size
     """
     adjusted_size = 0
-    if  matrix_length < 7:
+    if matrix_length < 7:
         adjusted_size = 25
-    if matrix_length >=7:
+    if matrix_length >= 7:
         adjusted_size = 20
-    if matrix_length >=9:
+    if matrix_length >= 9:
         adjusted_size = 18
     if matrix_length > 10:
         adjusted_size = 14
@@ -40,9 +38,9 @@ def adjust_font_size(matrix_length):
         adjusted_size = 3
     if matrix_length > 50:
         adjusted_size = 1
+    if matrix_length > 100:
+        adjusted_size = 0
     return adjusted_size
-
-
 
 def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50,
                     identical=99.3, possibly_related=95.0, different=0):
@@ -60,19 +58,20 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     matplotlib.rcParams['lines.linewidth'] = .5
     D = np.array(data, dtype= 'float')
 
-    cmap = colors.ListedColormap(['#992600', '#b3b300', '#006600'])
-    bounds = [0, possibly_related, identical, 100]
-    norm = colors.BoundaryNorm(bounds, cmap.N)
+    if identical is not None:
+        cmap = colors.ListedColormap(['#992600', '#b3b300', '#006600'])
+        bounds = [0, possibly_related, identical, 100]
+        norm = colors.BoundaryNorm(bounds, cmap.N)
+    else:
+        cmap = pylab.cm.RdYlGn
+        norm = None
 
     #truncate labels
-    #x_labels_trun = [lab[:7] for lab in x_labels]
-    #y_labels_trun = [lab[:7] for lab in y_labels]
 
     fig = pylab.figure()
     fig.set_size_inches(11, 8.5)
 
     # Compute and plot first dendrogram. [LEFT]
-    # ax1 = fig.add_axes([0.058,0.1,0.115,0.6], frame_on=False, )
     ax1 = fig.add_axes([0.058,0.1,0.155,0.6], frame_on=False, )
     Y = sch.linkage(D, method='weighted')
     Z1 = sch.dendrogram(Y, orientation='left', labels=y_labels, color_threshold=0, )  # color_list=['k'] )
@@ -103,7 +102,6 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
 
     # minor hacking to create the minor ticks, this is need to overlay the grid
     # probably a little bit of over kill but I think it better shows each grids as a distinct observation
-
     matplotlib.rcParams['lines.linewidth'] = 0.1
     locs = np.arange(len(x_labels))
     adjusted_locs = []
@@ -114,7 +112,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
         axis.set_ticks(adjusted_locs, minor=True, )
         axis.set(ticks=locs + 0.5, ticklabels=x_labels, )
 
-    axmatrix.matshow(D, aspect='auto', origin='lower', cmap=cmap, norm=norm,
+    im = axmatrix.matshow(D, aspect='auto', origin='lower', cmap=cmap, norm=norm,
                           interpolation='nearest', vmin=vmin, vmax=100, )
     matplotlib.rcParams['lines.linewidth'] = 1
     #modifiy x ticks and labels
@@ -185,8 +183,6 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
                     _color = 'w'
 
 
-
-
                 #annotate this mother
                 axmatrix.annotate(val, xy=(x, y), horizontalalignment='center', verticalalignment='center',
                                   fontsize=font_size, color=_color )
@@ -194,8 +190,9 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #color scale bar
-    #axcolor = fig.add_axes([0.88,0.1,0.02,0.6], frame_on=False)
-    #pylab.colorbar(im, cax=axcolor)
+    if identical is None:
+        axcolor = fig.add_axes([0.88,0.1,0.02,0.6], frame_on=False)
+        pylab.colorbar(im, cax=axcolor)
 
     #make a grid on the minor axis
     axmatrix.grid(True, which='minor', linestyle='-', color="w", linewidth=0.1)
@@ -308,7 +305,6 @@ def produce_histograms(jf_objects, output_prefix):
             pylab.yticks(fontsize=9)
             if this_plot == 4:
                 ax.set_ylabel("kmers with a given count", fontsize=12)
-
 
         if this_plot < 5:
             ax.set_ylabel("kmers with a given count", fontsize=12)

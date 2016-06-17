@@ -13,14 +13,18 @@ def plot_output(input_file, output_prefix):
                             #identical=98.5, possibly_related=95.0, different=0) # (x_labels, y_labels, matrix, kmer_counts)
 
             if "inverse" in key:
-                generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
-                                identical=98.0, possibly_related=90.0, different=0) # (x_labels, y_labels, matrix, kmer_counts)
+                pass
+                # generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
+                #                 identical=98.0, possibly_related=90.0, different=0) # (x_labels, y_labels, matrix, kmer_counts)
             elif "kmer_reference" == key:
-                generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
-                                identical=99.9, possibly_related=99.0, different=0)
+                pass
+                # generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
+                #                 identical=99.9, possibly_related=99.0, different=0)
             else:
+                # generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
+                #                 identical=99.5, possibly_related=95.0, different=0)
                 generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
-                                identical=99.0, possibly_related=90.0, different=0)
+                                identical=None, possibly_related=None, different=None)
 
 
 
@@ -135,7 +139,7 @@ def parse_tables(raw_matrix):
 
 def main():
     input_file = "/Users/331-SimmonkLPTP/Box Sync/ARUP/info/hauser_straintypemer_remove_poor_kmer_refernce.txt"
-    plot_output(open(input_file, "r"), "/Users/331-SimmonkLPTP/Box Sync/ARUP/info/hauser")
+    plot_output(open(input_file, "r"), "/Users/331-SimmonkLPTP/Box Sync/ARUP/info/hauser_straintypemer_remove_poor_kmer_reference_gradiant")
 
 if __name__ == "__main__":
     main()

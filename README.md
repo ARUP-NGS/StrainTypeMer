@@ -1,32 +1,33 @@
 # StrainTypeMer
 <hr>
-##### StrainTypeMer is a tool for pairwise comparison multiple genomes. Comparisons are made be comparing the 31bp kmers found between different strains/samples.
+##### StrainTypeMer is a tool for pairwise comparison multiple genomes. StrainTypeMer compares the 31bp kmers found between different strains/samples.
 
 ##### Features include:
 * Reference free comparison
-* pan-genome and core-genome comparison using genome filter (see below)
+* coregenome or non-coregenome comparison using filter fasta file.
 * Pairwise comparison of each input strain
 * Filters poor quality sequence
 * QC metrics
     * Estimated genome size
-    * Kmer cutoff
+    * Kmer count cutoff
     * Low coverage warning
-* Detection of epidemiological important genes
-* reporting of MLST type
+* Detection of epidemiological important genes [BETA `-ard` argument]
+* Reports of MLST type
 * Clustering and dendrogram creation
 * PDF output
 * Text output of similarity table and QC metrics
 
 <hr>
 ##### Inputs:
-* input can be fastq, fasta, fastq.gz, or fasta.gz files as input.
+* input files can be fastq, fasta, fastq.gz, or fasta.gz
 
 <hr>
 ##### Installation:
 
-1 If not already on your system install python 2.7 (I use anaconda)
+1.	If not already on your system install python 3.5
+ * I suggest using anaconda for fewer headaches
 
-2 StrainTypeMer requires Jellyfish installed with the python bindings.
+2.	Install Jellyfish with the python bindings.
 ``` bash
 wget https://github.com/gmarcais/Jellyfish/releases/download/v2.2.5/jellyfish-2.2.5.tar.gz
 tar xvf jellyfish-2.2.5.tar.gz
@@ -36,7 +37,7 @@ make
 make install
 
 ```
-3 Install StrainTypeMer
+3.	Install StrainTypeMer
 ```bash
 git clone
 cd StrainTypeMer
@@ -45,17 +46,28 @@ python setup.py install
 
 <hr>
 ##### Usage:
+full usage can be found by using:
+
+```bash
+python ~/StrainTypeMer/straintypemer/StrainTypeMer.py compare -h
+```
 StrainTypeMer has the following sub-commands:
  * update_mlst - This updates the MLST resources required to do MLST profiling
- * compare - Main command that take sequence files performs kmer filtering, MLST profiling, Gene detection, and comparison
-    * Take >2 strains as input
- * count - a subset of compare that peforms kmer filtering, MLST profiling, gene detection, and writes the strain record to json format.
-    * This command takes a single strain
-    * TODO this will allow for client side pairwise comparison
+ * compare - Main command that take sequence files and performs kmer filtering, MLST profiling, Gene detection, and comparison
+    * Take > 2 strains as input
+
+Example command:
+
+`python ~/StrainTypeMer/straintypemer/StrainTypeMer.py compare -t 3 --qual_score 15 -ard A10A.fq.gz:A10A A11A.fq.gz:A11A`
+
 
 ##### Considerations:
-StrainTypeMer was tested on Illumina datasets, where we found a minimum of 20X coverage was need for optimal strain
-comparsion.
+StrainTypeMer was tested on Illumina data sets, where we found a minimum of 20X coverage was need for optimal strain
+comparison.
+
+We are currently still developing StrainTypeMer and will continue to make improvements.
+
+
 
 
 

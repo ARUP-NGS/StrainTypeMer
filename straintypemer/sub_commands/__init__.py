@@ -17,11 +17,9 @@ try:
 except ImportError:
     raise ImportError("Jellyfish is not installed correctly make sure the python bindings are installed")
 
-
 def rc(sequence):
     _d = {"A": "T", "T": "A", "G": "C", "C": "G"}
     return "".join([_d[s] for s in reversed(sequence)])
-
 
 class StrainObject:
     """
@@ -448,9 +446,6 @@ class StrainObject:
         s += "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
         s += "\n"
 
-        # if verbose:
-        #sys.stdout.write(s)
-
         denom -= counter_filtered
         if strain_1_smallest:
             smallest_count -= filtered_1
@@ -559,8 +554,6 @@ class StrainObject:
         contents.update({"ard_results": self.ard_result(coverage_cutoff=0.90)})
         contents.update({"kmer_archive": list(self.kmer_archive)})
         contents.update({"kmers": list(self.kmer_set)})
-
         wf = open(path, "w")
-        # wf.write(json.dumps(contents, sort_keys=False, indent=4, default=json_util.default))
         wf.write(dumps(contents, sort_keys=False, indent=4, default=json_util.default))
         wf.close()

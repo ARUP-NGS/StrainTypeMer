@@ -19,17 +19,16 @@ def parse_files(fq_files):
     """
     Parse the file string
 
-    fastq files can be input in several ways
+    fastq/a files can be input in several ways
 
     Single file:
-    fg
+    fq
     Single file with label:
     fq:label
     paired_files:
     fq1,fq2
     paired_files with labels:
     fq1,fq2:label
-
     Additionally [NF] can be added to flag that the sample should not be filtered
     :param fq_files: String that contains file paths and labels
     :return: (tuple with (file_1,file_2,label[NF]))
@@ -63,17 +62,14 @@ def parse_files(fq_files):
                     raise NameError("The files names do not have consistent names to create labels")
         # check to see if files are valid
         if (os.path.isfile(f1)) is False:
-            sys.stderr.write("file is not a valid file path: {0}\n".format(f1))
-            raise IOError
+            raise IOError("file is not a valid file path: {0}".format(f1))
         # file 2
         if f2 is not None and (os.path.isfile(f2)) is False:
-            sys.stderr.write("file is not a valid file path: {0}\n".format(f2))
-            raise IOError
+            raise IOError("file is not a valid file path: {0}".format(f2))
         _files.append((f1, f2, label, do_not_filter_kmers))
     # check to make sure the labels are unique
     if len(_files) != len(set([f[2] for f in _files])):
-        sys.stderr.write("file labels are not unique\n")
-        raise IOError
+        raise IOError("file labels are not unique")
     return _files
 
 
@@ -88,9 +84,9 @@ def determine_file_type(this_file, gzipped=False):
             first_line = f.readline().decode()
     else:
         with open(this_file, 'r') as f:
-            first_line = f.readline().decode()
+            first_line = f.readline()  # .decode()
 
-    # what format
+    # what format, peek and find out
     if first_line[0] == "@":
         is_type = "fq"
     elif first_line[0] == ">":
@@ -103,6 +99,15 @@ def determine_file_type(this_file, gzipped=False):
 
 
 def input_is_jf(files_to_compare):
+    """
+    Allows the user to use jf files as input.
+    Saves time in kmer counting
+
+    currently this is hidden argument
+
+    :param files_to_compare:
+    :return:
+    """
     _out = []
     for i, files in enumerate(files_to_compare):
         _out.append((files[2], files[0], files[-1],))
@@ -606,5 +611,4 @@ def compare_ard(strain_objs, kmer_size=31, coverage_cutoff=.40):
                 else:
                     so.ard.update({id : ([so.qf[mer]], species, descriptions[id][1],
                                                 [aro_tags[tag] for tag in aro_tag] ) })
-
     return strain_objs
