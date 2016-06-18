@@ -43,7 +43,7 @@ def adjust_font_size(matrix_length):
     return adjusted_size
 
 def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50,
-                    identical=99.3, possibly_related=95.0, different=0):
+                    identical=None, possibly_related=None, different=None):
     """
     This function saves a PDF file containing a clustered matrix (nearest neighbor).
 
@@ -173,14 +173,14 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
 
                 #use white font color if value is greater than 99
 
-                if float(D[x][y]) >= possibly_related:
-                    _color = 'black'
-                else:
-                    _color = "w"
-
-
-                if float(D[x][y]) >= identical:
-                    _color = 'w'
+                # if float(D[x][y]) >= possibly_related:
+                #     _color = 'black'
+                # else:
+                #     _color = "w"
+                #
+                #
+                # if float(D[x][y]) >= identical:
+                #     _color = 'w'
 
 
                 #annotate this mother
@@ -201,9 +201,9 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     if output_prefix != "":
         pdf = "{0}_{1}".format(output_prefix,'matrix.png',)
     else:
-        pdf = 'matrix.pdf'
+        pdf = 'matrix.png'
 
-    fig.savefig(pdf, format="png", bbox_inches="tight", dpi=800)
+    fig.savefig(pdf, format="png", bbox_inches="tight", dpi=400)
     return
 
 def chunk_list(_OrderedDict, chunk_size=5):

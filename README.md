@@ -12,9 +12,9 @@
     * Kmer count cutoff
     * Low coverage warning
 * Detection of epidemiological important genes [BETA `-ard` argument]
-* Reports of MLST type
+* MLST type
 * Clustering and dendrogram creation
-* PDF output
+* PDF output (strain histograms and clustered similarity matrix)
 * Text output of similarity table and QC metrics
 
 <hr>
