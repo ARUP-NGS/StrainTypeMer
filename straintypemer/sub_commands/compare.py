@@ -194,6 +194,11 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
     :return: None
     """
     # Initial QC of files names
+    if "FILE=" in fq_files:
+        # TODO [load info from file]
+        fq_files = [line.strip() for line in open(fq_files.split("=")[-1], "r").readlines()]
+
+
     if len(fq_files) < 2:
         sys.stderr.write("Not enough files to compare\n")
         raise Exception
