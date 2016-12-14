@@ -8,7 +8,7 @@ def plot_output(input_file, output_prefix):
             # print(result[0])
             # print(result[1])
             # print(len(result[2]), len(result[2][0]))
-            print(result[2][0])
+            #print(result[2][0])
             #generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
                             #identical=98.5, possibly_related=95.0, different=0) # (x_labels, y_labels, matrix, kmer_counts)
 
@@ -23,7 +23,7 @@ def plot_output(input_file, output_prefix):
             else:
                 # generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
                 #                 identical=99.5, possibly_related=95.0, different=0)
-                generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
+                generage_matrix(result[0], result[1], result[2], "test", result[3],
                                 identical=None, possibly_related=None, different=None)
 
 
@@ -113,9 +113,9 @@ def parse_tables(raw_matrix):
                             denominator_matrix.append(_values[1:])
 
 
-    print(len(x_labels), x_labels[-1])
-    print(len(y_labels), y_labels[-1])
-    print(denominator_matrix)
+    #print(len(x_labels), x_labels[-1])
+    #print(len(y_labels), y_labels[-1])
+    #print(denominator_matrix)
     kmer_counts = {}
     for i in range(len(denominator_matrix)):
         for j in range(len(denominator_matrix)):

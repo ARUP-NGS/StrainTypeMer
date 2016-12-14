@@ -72,6 +72,16 @@ mlst_urls = {
         'http://pubmlst.org/data/alleles/ecoli/mdh.tfa',
         'http://pubmlst.org/data/alleles/ecoli/purA.tfa',
         'http://pubmlst.org/data/alleles/ecoli/recA.tfa'
+    ],
+    'Pseudomonas aeruginosa' : [
+        'http://pubmlst.org/data/profiles/paeruginosa.txt',
+        'http://pubmlst.org/data/alleles/paeruginosa/acs.tfa',
+        'http://pubmlst.org/data/alleles/paeruginosa/aro.tfa',
+        'http://pubmlst.org/data/alleles/paeruginosa/gua.tfa',
+        'http://pubmlst.org/data/alleles/paeruginosa/mut.tfa',
+        'http://pubmlst.org/data/alleles/paeruginosa/nuo.tfa',
+        'http://pubmlst.org/data/alleles/paeruginosa/pps.tfa',
+        'http://pubmlst.org/data/alleles/paeruginosa/trp.tfa'
     ]
 
 

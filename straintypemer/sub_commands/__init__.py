@@ -104,7 +104,11 @@ class StrainObject:
             sys.exit(1)
 
         for v in out.decode().strip().split("\n"):
-            freq, count = [int(i) for i in v.split(" ")]
+            try:
+                freq, count = [int(i) for i in v.split(" ")]
+            except ValueError:
+                _histo.update({5: 1})
+                return _histo
             if freq in _histo:
                 _histo[freq] += count
             else:
@@ -236,7 +240,8 @@ class StrainObject:
 
         intersection = float(len(strain_1.intersection(strain_2)))
         denom = ((len(strain_1) - intersection) + (len(strain_2) - intersection)) + intersection
-
+        # print(len(strain_1), len(strain_2))
+        # print(intersection, denom)
         total = intersection / denom * 100.0
         smallest_count = float(len(strain_1))
         if len(strain_2) < smallest_count:
@@ -497,7 +502,7 @@ class StrainObject:
             return["no matching profiles found"]
         return results
 
-    def ard_result(self, coverage_cutoff=0.80):
+    def ard_result(self, coverage_cutoff=0.92):
         _out = {}
         for id, result in self.ard.items():
             counts = np.array(result[0]).clip(0, 1)

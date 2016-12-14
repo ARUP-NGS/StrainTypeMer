@@ -11,7 +11,6 @@ from straintypemer import _ROOT
 from straintypemer import mlst_urls
 from collections import OrderedDict
 
-
 def update_mlst_resources():
     resource_path = os.path.join(_ROOT, "data/")
     if os.path.exists(resource_path) is False:
@@ -36,12 +35,12 @@ def update_mlst_resources():
 
 def pickle_profiles(file_lists, resource_path, kmer_size=31):
     jellyfish.MerDNA_k(kmer_size)
-    #instantiate the pickle obj
+    #  instantiate the pickle obj
     mlst_profiles_dict = OrderedDict()
     for species, file_list in file_lists.items():
 
         if species not in mlst_profiles_dict:
-            mlst_profiles_dict.update({species : {"ST" : OrderedDict(), "GENES" : OrderedDict(), "GENE_ORDER" : None}})
+            mlst_profiles_dict.update({species: {"ST": OrderedDict(), "GENES" : OrderedDict(), "GENE_ORDER" : None}})
 
         number_of_genes = len(file_list) - 1
         for i, l in enumerate(open([os.path.join(resource_path, species, f)

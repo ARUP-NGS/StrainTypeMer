@@ -170,7 +170,7 @@ def main():
         )
 
     elif args.subparser_name == "plot":
-        plot_output(input_file=args.input, output_prefix=args.ouput)
+        plot_output(input_file=args.input, output_prefix=args.output_prefix)
 
     elif args.subparser_name == "update_mlst":
         update_mlst_resources()

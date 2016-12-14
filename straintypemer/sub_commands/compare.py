@@ -14,7 +14,6 @@ try:
 except ImportError:
     import pickle
 
-
 def parse_files(fq_files):
     """
     Parse the file string
@@ -114,7 +113,8 @@ def input_is_jf(files_to_compare):
     return _out
 
 
-def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500M", no_kmer_filtering=False):
+def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500M", no_kmer_filtering=False,
+                kmer_size=31):
     """
     makes system call to jellyfish to count the kmers in the fastq set
 
@@ -153,21 +153,20 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
         qual = str(chr(qual_filter + 33))
         if gzipped:
             if file_type == "fa":
-                subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -L {6} -m 31 -s {5} -t {4} -C -o "
+                subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -L {6} -m {7} -s {5} -t {4} -C -o "
                                        "{3} /dev/fd/0".format(files[0], f2, '"' + qual + '"', jf_file, cpus, hash_size,
-                                                              count_cutoff)], shell=True)
+                                                              count_cutoff, kmer_size)], shell=True)
             elif file_type == "fq":
-                subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L {6} -m 31 -s {5} -t {4} -C -o "
+                subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L {6} -m {7} -s {5} -t {4} -C -o "
                                       "{3} /dev/fd/0".format(files[0], f2, '"' + qual + '"', jf_file, cpus, hash_size,
-                                                             count_cutoff)], shell=True)
+                                                             count_cutoff, kmer_size)], shell=True, )
         else:
             if file_type == "fa":
-                subprocess.check_call(["jellyfish", "count", "-L", str(count_cutoff), "-m", "31", "-s", hash_size, "-t",
-                                      str(cpus), "-C", "-o", jf_file, files[0], f2],)
-
-            if file_type == "fq":
+                subprocess.check_call(" ".join(["jellyfish", "count", "-L", str(count_cutoff), "-m", str(kmer_size), "-s",
+                                           hash_size, "-t", str(cpus), "-C", "-o", jf_file, files[0], f2]), shell=True)
+            elif file_type == "fq":
                 subprocess.check_call(
-                    ["jellyfish", "count", "-Q", qual, "-L", str(count_cutoff), "-m", "31", "-s", hash_size,
+                    ["jellyfish", "count", "-Q", qual, "-L", str(count_cutoff), "-m", str(kmer_size), "-s", hash_size,
                      "-t", str(cpus), "-C", "-o", jf_file, files[0], f2],)
         _results.append((files[2], jf_file, files[-1]))
     return _results
@@ -176,7 +175,7 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
 def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0, output_matrix=True,
             output_histogram=True, output_prefix="", no_kmer_filtering=False, kmer_reference=None,
             inverse_kmer_reference=None, include_ard_comparison=False, pairwise_kmer_filtering=False,
-            rapid_mode=True, jf_input=False, clean_files=True):
+            rapid_mode=True, jf_input=False, clean_files=True, kmer_size=31):
     """
     The is the entry point for this subcommand:  compares multiple files
 
@@ -205,9 +204,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         counts = input_is_jf(files_to_compare)
     else:
         counts = count_kmers(files_to_compare, gzipped, cpus=cpus, qual_filter=qual_filter,
-                             no_kmer_filtering=no_kmer_filtering)
-
-
+                             no_kmer_filtering=no_kmer_filtering, kmer_size=31)
 
     sys.stdout.write("".center(80, "-") + "\n")
     strain_objs = OrderedDict()  # create the strain objects
@@ -260,7 +257,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         for profile in strain_objs[name].mlst_profiles(mlst_profiles):
             sys.stdout.write("\tMLST profile: {0}\n".format(profile))
 
-        for tag, ar_result in strain_objs[name].ard_result(coverage_cutoff=0.8).items():
+        for tag, ar_result in strain_objs[name].ard_result(coverage_cutoff=0.92).items():
             sys.stdout.write(
             "\tARD GENE: Gene tag: {0} Covered: {1:.1f}% (size {2}) "
             "\n\t\tcount mean(min|max): {3} ({5}|{6}); {4:.1f}X change from coverage"
@@ -549,7 +546,6 @@ def filter_coverage(strain_objs, cpus=2):
 def filter_strains(q, strain):
     """
     Places filtering into queue
-
     :param q: the queue
     :param strain: strain object to filter
     :return:
