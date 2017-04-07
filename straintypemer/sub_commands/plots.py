@@ -170,7 +170,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
         for x in range(len(x_labels)):
             for y in range(len(y_labels)):
                 #modifiy formatting to make sure value fits in square
-                val = "{:.2f}".format(D[x][y])
+                val = "{:.1f}".format(D[x][y])
                 _color = 'k'
                 if "100" in val:
                     val = '100'
