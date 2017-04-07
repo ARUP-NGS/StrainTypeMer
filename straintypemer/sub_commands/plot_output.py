@@ -23,7 +23,7 @@ def plot_output(input_file, output_prefix):
             else:
                 # generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
                 #                 identical=99.5, possibly_related=95.0, different=0)
-                generage_matrix(result[0], result[1], result[2], output_prefix + "_" + key, result[3],
+                generage_matrix(result[0], result[1], result[2], output_prefix + "_" + str(key), result[3],
                                 identical=None, possibly_related=None, different=None)
 
 

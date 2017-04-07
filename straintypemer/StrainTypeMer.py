@@ -94,7 +94,7 @@ def arguments():
     parser_plot = subparsers.add_parser('plot', help='plot results from standard out')
 
     parser_plot.add_argument("-i", "--input", help="the input file", type=argparse.FileType("r"), required=True)
-    parser_plot.add_argument("-o", "--output_prefix", help="the output prefix", type=argparse.FileType("w"),
+    parser_plot.add_argument("-o", "--output_prefix", help="the output prefix", type=str,
                              required=True)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -170,7 +170,7 @@ def main():
         )
 
     elif args.subparser_name == "plot":
-        plot_output(input_file=args.input, output_prefix=args.ouput)
+        plot_output(input_file=args.input, output_prefix=args.output_prefix)
 
     elif args.subparser_name == "update_mlst":
         update_mlst_resources()

@@ -173,7 +173,7 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
     return _results
 
 
-def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0, output_matrix=True,
+def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.20, qual_filter=0, output_matrix=True,
             output_histogram=True, output_prefix="", no_kmer_filtering=False, kmer_reference=None,
             inverse_kmer_reference=None, include_ard_comparison=False, pairwise_kmer_filtering=False,
             rapid_mode=True, jf_input=False, clean_files=True):
@@ -207,14 +207,12 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         counts = count_kmers(files_to_compare, gzipped, cpus=cpus, qual_filter=qual_filter,
                              no_kmer_filtering=no_kmer_filtering)
 
-
-
     sys.stdout.write("".center(80, "-") + "\n")
     strain_objs = OrderedDict()  # create the strain objects
     # calculated and set the coverage
     for label, file_path, filter_file in counts:
         jf = StrainObject(label, file_path)
-        #jf.do_not_filter = filter_file
+        # jf.do_not_filter = filter_file
         strain_objs.update({label: jf})
 
         if rapid_mode:
@@ -241,7 +239,7 @@ def compare(fq_files, gzipped=False, cpus=1, coverage_cutoff=0.15, qual_filter=0
         mlst_profiles = pickle.load(open(mlst_path, "rb"))
 
 
-    # antibiotic_resistance_genes
+    # antibiotic_resistance_genesq
     if include_ard_comparison:
         strain_objs = compare_ard(strain_objs)
 

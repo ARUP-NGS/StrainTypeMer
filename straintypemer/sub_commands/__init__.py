@@ -445,7 +445,7 @@ class StrainObject:
         s += "{0}\tkmers filtered\n{1}\tkmers retained\n".format(counter_filtered, counter_not_filtered)
         s += "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
         s += "\n"
-
+        sys.stderr.write(s)
         denom -= counter_filtered
         if strain_1_smallest:
             smallest_count -= filtered_1

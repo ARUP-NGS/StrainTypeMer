@@ -55,7 +55,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     :param vmin: default is 50, this will automatically be set to the lowest value for
     :return: None (writes file out)
     """
-    matplotlib.rcParams['lines.linewidth'] = .5
+    matplotlib.rcParams['lines.linewidth'] = .8
     D = np.array(data, dtype= 'float')
 
     if identical is not None:
@@ -67,12 +67,12 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
         norm = None
 
     #truncate labels
-
     fig = pylab.figure()
     fig.set_size_inches(11, 8.5)
 
     # Compute and plot first dendrogram. [LEFT]
-    ax1 = fig.add_axes([0.058,0.1,0.155,0.6], frame_on=False, )
+    #ax1 = fig.add_axes([0.058,0.1,0.155,0.6], frame_on=False, )
+    ax1 = fig.add_axes([0.045,0.1,0.155,0.6], frame_on=False, )
     Y = sch.linkage(D, method='weighted')
     Z1 = sch.dendrogram(Y, orientation='left', labels=y_labels, color_threshold=0, )  # color_list=['k'] )
     ax1.set_xticks([])
@@ -80,9 +80,9 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
 
     # Compute and plot second dendrogram. [TOP]
     #ax2 = fig.add_axes([0.26,0.815,0.6,0.1], frame_on=False)
-    ax2 = fig.add_axes([0.26,0.775,0.6,0.1], frame_on=False)
+    ax2 = fig.add_axes([0.26,0.775,0.6,0.1], frame_on=False,)
     Y = sch.linkage(D, method='weighted')
-    Z2 = sch.dendrogram(Y, labels=x_labels, count_sort=False, color_threshold=0,) # color_list=['k'])
+    Z2 = sch.dendrogram(Y, labels=x_labels, count_sort=False, color_threshold=0, no_plot=True) # color_list=['k'])
     ax2.set_xticks([])
     ax2.set_yticks([])
 
@@ -99,10 +99,9 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
         vmin = np.min(D)
 
 
-
     # minor hacking to create the minor ticks, this is need to overlay the grid
     # probably a little bit of over kill but I think it better shows each grids as a distinct observation
-    matplotlib.rcParams['lines.linewidth'] = 0.1
+    matplotlib.rcParams['lines.linewidth'] = 0.8
     locs = np.arange(len(x_labels))
     adjusted_locs = []
     for loc in locs:
@@ -114,19 +113,21 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
 
     im = axmatrix.matshow(D, aspect='auto', origin='lower', cmap=cmap, norm=norm,
                           interpolation='nearest', vmin=vmin, vmax=100, )
-    matplotlib.rcParams['lines.linewidth'] = 1
+    matplotlib.rcParams['lines.linewidth'] = 1.5
     #modifiy x ticks and labels
     axmatrix.set_xticks(range(len(x_labels)))
-    axmatrix.set_xticklabels(["{0:s}".format((x_labels[i][:20] + "" + x_labels[i][20:40]).replace("_"," "),
-                                             kmer_count[x_labels[i]]) for i in idx2], minor=False,
-                             multialignment='center', linespacing=1)
+    axmatrix.set_xticklabels(["{0:s}".format((x_labels[i].replace(".fq", "").replace(".fastq", "").replace(".gz", "")[:10] + "\n" +
+                                              x_labels[i].replace(".fq", "").replace(".fastq", "").replace(".gz", "")[10:20]).replace("_"," "),
+                                              kmer_count[x_labels[i]]) for i in idx2], minor=False,
+                                              multialignment='center', linespacing=1)
 
 
     axmatrix.xaxis.set_label_position("top")
     if len(x_labels) > 100:
         pylab.xticks(rotation=-90, fontsize=2, )
     else:
-        pylab.xticks(rotation=-90, fontsize=adjust_font_size(len(data)),)
+        pylab.xticks(rotation=-90, fontsize=8,)
+        pylab.yticks(fontsize=3,)
 
     #make sure minor ticks are one
     axmatrix.tick_params(axis='both', which='minor', right='on', top='on', bottom='on', color="w", width=.02)
@@ -135,10 +136,13 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     axmatrix.tick_params(axis='both', which='major', right='off', top='off', bottom='off', left='off', width=.02)
 
     #modify the y tick and labels
+
     axmatrix.set_yticks(range(len(y_labels)))
-    axmatrix.set_yticklabels(["{:s}".format((y_labels[i][:15] + "" + y_labels[i][15:30]).replace("_"," "),
-                                            kmer_count[y_labels[i]]) for i in idx1], minor=False,
-                             multialignment='center', linespacing=1)
+    axmatrix.set_yticklabels(["{:s}".format((y_labels[i].replace(".fq", "").replace(".fastq", "").replace(".gz", "")[:10]
+                                             + "\n" +
+                                             y_labels[i].replace(".fq", "").replace(".fastq", "").replace(".gz", "")[10:20]).replace("_"," "),
+                                             kmer_count[y_labels[i]]) for i in idx1], minor=False,
+                                             multialignment='center', linespacing=1)
 
     for i, label in enumerate(axmatrix.xaxis.get_ticklabels()):
         if i%2 == 0:
@@ -155,7 +159,8 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     if len(x_labels) > 100:
         pylab.yticks(fontsize=2)
     else:
-        pylab.yticks(fontsize=adjust_font_size(len(data)))
+        pylab.yticks(fontsize=6)
+
 
 
     #~~~ Add annotations to each cell
@@ -165,7 +170,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
         for x in range(len(x_labels)):
             for y in range(len(y_labels)):
                 #modifiy formatting to make sure value fits in square
-                val = "{:.1f}".format(D[x][y])
+                val = "{:.2f}".format(D[x][y])
                 _color = 'k'
                 if "100" in val:
                     val = '100'
