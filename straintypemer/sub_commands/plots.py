@@ -159,7 +159,10 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     if len(x_labels) > 100:
         pylab.yticks(fontsize=2)
     else:
-        pylab.yticks(fontsize=6)
+        fs = int(adjust_font_size(len(data)) / 2)
+        pylab.yticks(fontsize=fs)
+        pylab.xticks(fontsize=adjust_font_size(len(data)))
+
 
 
 
@@ -252,9 +255,9 @@ def produce_histograms(jf_objects, output_prefix):
     """
     jf_chunks = chunk_list(jf_objects, )
     if output_prefix != "":
-        pdf = PdfPages("{0}_{1}".format(output_prefix,'histograms.pdf'))
+        pdf = PdfPages("{0}_{1}".format(output_prefix,'histograms.png'))
     else:
-        pdf = PdfPages('histograms.pdf')
+        pdf = PdfPages('histograms.png')
 
     ylim = 0
     #plt.use("Agg")
@@ -268,7 +271,7 @@ def produce_histograms(jf_objects, output_prefix):
         pylab.subplots_adjust(hspace = .4, wspace=.001)
         this_plot = 1
         for name, strain in chunk:
-            ax = fig.add_subplot(5,1,this_plot)
+            ax = fig.add_subplot(5 , 1, this_plot)
 
             freq, count, ylim = generate_histo_values(strain)
             xlim = strain.coverage * 2

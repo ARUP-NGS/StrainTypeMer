@@ -53,7 +53,6 @@ def compare_ard(so, kmer_size=31):
                                     [aro_tags[tag] for tag in aro_tag])})
     return
 
-
 def determine_file_type(this_file, gzipped=False):
     """
     returns 'fa' 'fq' or raises error
