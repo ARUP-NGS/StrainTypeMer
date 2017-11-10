@@ -116,7 +116,8 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     matplotlib.rcParams['lines.linewidth'] = 1.5
     #modifiy x ticks and labels
     axmatrix.set_xticks(range(len(x_labels)))
-    axmatrix.set_xticklabels(["{0:s}".format((x_labels[i].replace(".fq", "").replace(".fastq", "").replace(".gz", "")[:10] + "\n" +
+    axmatrix.set_xticklabels(["{0:s}".format((x_labels[i].replace(".fq", "").replace(".fastq", "").replace(".gz", "")[:10]
+                                              + "" + #add line sepertor
                                               x_labels[i].replace(".fq", "").replace(".fastq", "").replace(".gz", "")[10:20]).replace("_"," "),
                                               kmer_count[x_labels[i]]) for i in idx2], minor=False,
                                               multialignment='center', linespacing=1)
@@ -139,19 +140,19 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
 
     axmatrix.set_yticks(range(len(y_labels)))
     axmatrix.set_yticklabels(["{:s}".format((y_labels[i].replace(".fq", "").replace(".fastq", "").replace(".gz", "")[:10]
-                                             + "\n" +
+                                             + "" +
                                              y_labels[i].replace(".fq", "").replace(".fastq", "").replace(".gz", "")[10:20]).replace("_"," "),
                                              kmer_count[y_labels[i]]) for i in idx1], minor=False,
                                              multialignment='center', linespacing=1)
 
     for i, label in enumerate(axmatrix.xaxis.get_ticklabels()):
-        if i%2 == 0:
+        if i % 2 == 0:
             label.set_color('#5C6161')
         else:
             label.set_color("#000000")
 
     for i, label in enumerate(axmatrix.yaxis.get_ticklabels()):
-        if i%2 == 0:
+        if i % 2 == 0:
             label.set_color('#5C6161')
         else:
             label.set_color("#000000")
@@ -159,7 +160,7 @@ def generage_matrix(x_labels, y_labels, data, output_prefix, kmer_count, vmin=50
     if len(x_labels) > 100:
         pylab.yticks(fontsize=2)
     else:
-        fs = int(adjust_font_size(len(data)) / 2)
+        fs = int(adjust_font_size(len(data)) / 2.1)
         pylab.yticks(fontsize=fs)
         pylab.xticks(fontsize=adjust_font_size(len(data)))
 
@@ -255,9 +256,9 @@ def produce_histograms(jf_objects, output_prefix):
     """
     jf_chunks = chunk_list(jf_objects, )
     if output_prefix != "":
-        pdf = PdfPages("{0}_{1}".format(output_prefix,'histograms.png'))
+        pdf = PdfPages("{0}_{1}".format(output_prefix, 'histograms.pdf'))
     else:
-        pdf = PdfPages('histograms.png')
+        pdf = PdfPages('histograms.pdf')
 
     ylim = 0
     #plt.use("Agg")
