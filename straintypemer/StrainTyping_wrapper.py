@@ -10,7 +10,7 @@ def arguments():
                         help="the csv file containing the 'accession number', 'strain id' and 'label' to compare",
                         type=argparse.FileType("rU"))
     parser.add_argument("--delimiter", help="The delimiter value", default=",",)
-
+    return parser.parse_args()
 
 
 def parse_csv(csv_file, delimeter):
@@ -38,11 +38,9 @@ def find_files(files_to_find):
     return files_to_analyze
 
 
-
-
-
 def main():
     args = arguments()
+
     files_to_find = parse_csv(args.csv_file, args.delimiter)
 
     files = find_files(files_to_find)
