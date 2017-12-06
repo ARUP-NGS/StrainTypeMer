@@ -16,7 +16,7 @@ def arguments():
 def parse_csv(csv_file, delimeter):
     files = {}
     for line in csv_file:
-        accession, name, label = csv_file.strip().split(delimeter)[0:3]
+        accession, name, label = line.strip().split(delimeter)[0:3]
         files.update({"{0}_{1}".format(accession, name): label})
     return files
 
