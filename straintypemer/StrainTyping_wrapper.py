@@ -21,7 +21,6 @@ def parse_csv(csv_file, delimeter):
     return files
 
 
-
 def find_files(files_to_find):
     files_to_analyze = {}
     found_files = 0
@@ -33,8 +32,14 @@ def find_files(files_to_find):
                 found_files += 1
                 files_to_analyze.update({ name :"{0}:{1}".format(files_to_find, files_to_find[name])})
                 sys.stderr.write("found {0}\n".format(name))
-    if len(set(files_to_analyze).difference(files_to_find)):
-        raise ValueError("the following file was not accession [{0}] and strain [{1} were not found".format(name.split("_")[0], name.split("_")[1]))
+
+    if len(set(files_to_analyze).intersection(files_to_find)) != len(files_to_find):
+        count = 0
+        for name in set(files_to_find).difference(files_to_analyze):
+            count += 1
+            sys.stderr.write("ERROR: the following file was not accession [{0}] and strain [{1}] were not found\n".format(name.split("_")[0], name.split("_")[1]))
+
+        raise ValueError("{0} out of {1} files were not found".format(count, len(files_to_find)))
     return files_to_analyze
 
 
