@@ -17,9 +17,11 @@ try:
 except ImportError:
     raise ImportError("Jellyfish is not installed correctly make sure the python bindings are installed")
 
+
 def rc(sequence):
     _d = {"A": "T", "T": "A", "G": "C", "C": "G"}
     return "".join([_d[s] for s in reversed(sequence)])
+
 
 class StrainObject:
     """
@@ -104,7 +106,11 @@ class StrainObject:
             sys.exit(1)
 
         for v in out.decode().strip().split("\n"):
-            freq, count = [int(i) for i in v.split(" ")]
+            try:
+                freq, count = [int(i) for i in v.split(" ")]
+            except ValueError:
+                raise ValueError("strain: {0}\n\tat location: {1}\n\t does not have adequate sequence"
+                                 "consider removing and re-running the analysis".format(self.name, self.path))
             if freq in _histo:
                 _histo[freq] += count
             else:
