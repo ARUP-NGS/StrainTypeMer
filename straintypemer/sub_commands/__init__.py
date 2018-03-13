@@ -289,9 +289,16 @@ class StrainObject:
         if len(strain_2) < smallest_count:
             smallest_count = len(strain_2)
             strain_1_smallest = False
-
-        rescue_numerator = float(len(strain_1.intersection(strain_2)))
-        rescue = rescue_numerator / smallest_count * 100.0
+        
+        #catching a divide by zero error and returning 0
+        try:
+            rescue_numerator = float(len(strain_1.intersection(strain_2)))
+            rescue = rescue_numerator / smallest_count * 100.0
+        except ZeroDivisionError as e:
+            print("###############\nWARNING:\tSample {} or {} does not have sufficient coverage."
+                  "\n###############".format(self.name, strain.name))
+            rescue = 0
+        
         # return self.name, strain.name, total, rescue, denom, smallest_count
         if total < filtering_cutoff or self.do_not_filter or strain.do_not_filter:
             return self.name, strain.name, total, rescue, denom, smallest_count
