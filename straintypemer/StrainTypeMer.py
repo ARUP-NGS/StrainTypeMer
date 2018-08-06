@@ -1,4 +1,4 @@
-#!/home/ksimmon/anaconda/bin/python
+#!/usr/bin/env python
 
 """
 This application will take as fasta/fastq sequences from strains and perform a comparison in kmer space.
