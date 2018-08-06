@@ -153,13 +153,20 @@ def count_kmers(files_to_compare, gzipped, cpus=1, qual_filter=0, hash_size="500
         qual = str(chr(qual_filter + 33))
         if gzipped:
             if file_type == "fa":
-                subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -L {6} -m 31 -s {5} -t {4} -C -o "
-                                       "{3} /dev/fd/0".format(files[0], f2, '"' + qual + '"', jf_file, cpus, hash_size,
-                                                              count_cutoff)], shell=True)
+                gzip_process = subprocess.Popen(["gzip", "--decompress", "--to-stdout", files[0], f2],
+                                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                subprocess.check_call(["jellyfish", "count", "--mer-len", "31", "-L", str(count_cutoff),
+                                       "--size", hash_size, "-t", str(cpus), "--canonical", "--output",
+                                       jf_file, "/dev/fd/0"], stdin=gzip_process.stdout)
+                gzip_process.stdout.close()
             elif file_type == "fq":
-                subprocess.check_call(["gzip -dc {0} {1} | jellyfish count -Q {2} -L {6} -m 31 -s {5} -t {4} -C -o "
-                                      "{3} /dev/fd/0".format(files[0], f2, '"' + qual + '"', jf_file, cpus, hash_size,
-                                                             count_cutoff)], shell=True)
+                gzip_process = subprocess.Popen(["gzip", "--decompress", "--to-stdout", files[0], f2],
+                                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                subprocess.check_call(["jellyfish", "count", "--mer-len", "31", "-L", str(count_cutoff),
+                                       "--size", hash_size, "-t", str(cpus), "--canonical", "-Q", qual,
+                                       "--output", jf_file, "/dev/fd/0"], stdin=gzip_process.stdout)
+                gzip_process.stdout.close()
+
         else:
             if file_type == "fa":
                 subprocess.check_call(["jellyfish", "count", "-L", str(count_cutoff), "-m", "31", "-s", hash_size, "-t",
